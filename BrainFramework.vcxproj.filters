@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="demo">
+      <UniqueIdentifier>{56dab4b9-4374-4ef4-9152-92f0e1da8796}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ext">
+      <UniqueIdentifier>{37b3aa65-b7a9-4dec-bf3b-78eac492a9c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{e13bfd02-0a16-4695-ab72-3e5d585bada2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ext\imgui">
+      <UniqueIdentifier>{ab1e3eea-02ce-4475-9590-b4870c307699}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="demo\Application.hpp">
+      <Filter>demo</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imgui_impl_dx11.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imgui_impl_win32.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imgui_internal.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imstb_rectpack.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imstb_textedit.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imstb_truetype.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imconfig.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\imgui\imgui.h">
+      <Filter>ext\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\BrainFramework.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="NeuralNetwork.hpp" />
+    <ClInclude Include="Utils.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="demo\Application.cpp">
+      <Filter>demo</Filter>
+    </ClCompile>
+    <ClCompile Include="demo\main.cpp">
+      <Filter>demo</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui_draw.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui_impl_dx11.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui_impl_win32.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui_tables.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui_widgets.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ext\imgui\imgui_demo.cpp">
+      <Filter>ext\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\BrainFramework.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="NeuralNetwork.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
