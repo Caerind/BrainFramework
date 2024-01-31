@@ -47,4 +47,5 @@ private:
 
 private:
     std::vector<Neuron> m_Neurons;
+    int m_OutputsStart{ 0 };
 };
