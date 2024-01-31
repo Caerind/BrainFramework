@@ -65,7 +65,7 @@ void NeuralNetwork::PrebakeNetwork(const Genome& genome, NeuralNetwork::BakingNe
 
     for (int o = 0; o < k_Outputs; ++o)
     {
-        bakingNeurons[o].value = 0;
+        bakingNeurons[o].value = 0; // TODO : o
     }
 
     for (const Gene& gene : genome.GetGenes())
