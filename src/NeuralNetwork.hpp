@@ -27,6 +27,8 @@ private:
         float value{ 0.0f };
         float weight{ 0.0f };
         int incomingDepth{ 0 };
+        bool isInput{ false };
+        bool isOutput{ false };
     };
 
     struct Neuron
