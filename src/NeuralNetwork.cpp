@@ -11,11 +11,13 @@ void NeuralNetwork::Generate(const Genome& genome)
 
     // Bake
     m_Neurons.resize(bakingNeurons.size());
+    m_OutputsStart = 0;
+    // TODO
 }
 
-bool NeuralNetwork::Evaluate(const std::vector<int>& inputs, std::vector<int>& outputs)
+bool NeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs)
 {
-    if (inputs.size() != k_Inputs)
+    if (inputs.size() != k_Inputs || outputs.size() != k_Outputs)
     {
         return false;
     }
@@ -27,7 +29,7 @@ bool NeuralNetwork::Evaluate(const std::vector<int>& inputs, std::vector<int>& o
     }
 
     // Propagate
-    for (int i = k_Inputs; i < m_Neurons.size(); ++i)
+    for (int i = k_Inputs; i < m_OutputsStart; ++i)
     {
         Neuron& neuron = m_Neurons[i];
         float sum = 0.0f;
@@ -37,11 +39,18 @@ bool NeuralNetwork::Evaluate(const std::vector<int>& inputs, std::vector<int>& o
         }
         neuron.value = Sigmoid(sum);
     }
-
+    
     // Read outputs
-    for (int i = 0; i < k_Outputs; ++i)
+    const int size = static_cast<int>(m_Neurons.size());
+    for (int i = m_OutputsStart; i < size; ++i)
     {
-        outputs[i] = m_Neurons[i].value;
+        Neuron& neuron = m_Neurons[i];
+        float sum = 0.0f;
+        for (const Neuron* incoming : neuron.incomings)
+        {
+            sum += incoming->weight * incoming->value;
+        }
+        outputs[i] = Sigmoid(sum);
     }
 }
 
