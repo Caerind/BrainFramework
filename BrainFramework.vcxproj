@@ -28,9 +28,9 @@
     <ClInclude Include="ext\imgui\imstb_rectpack.h" />
     <ClInclude Include="ext\imgui\imstb_textedit.h" />
     <ClInclude Include="ext\imgui\imstb_truetype.h" />
-    <ClInclude Include="NeuralNetwork.hpp" />
     <ClInclude Include="src\BrainFramework.hpp" />
-    <ClInclude Include="Utils.hpp" />
+    <ClInclude Include="src\NeuralNetwork.hpp" />
+    <ClInclude Include="src\Utils.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\Application.cpp" />
@@ -42,8 +42,8 @@
     <ClCompile Include="ext\imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="ext\imgui\imgui_tables.cpp" />
     <ClCompile Include="ext\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="NeuralNetwork.cpp" />
     <ClCompile Include="src\BrainFramework.cpp" />
+    <ClCompile Include="src\NeuralNetwork.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

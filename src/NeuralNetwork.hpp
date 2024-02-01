@@ -7,28 +7,10 @@ class Genome;
 class NeuralNetwork
 {
 public:
-    NeuralNetwork() = default;
-
-    NeuralNetwork(const NeuralNetwork&) = delete;
-    NeuralNetwork& operator=(const NeuralNetwork&) = delete;
-
-    void Generate(const Genome& genome);
-
-    bool Evaluate(const std::vector<int>& inputs, std::vector<int>& outputs);
-
-private:
-    struct BakingNeuron
+    struct Link
     {
-        BakingNeuron() = default;
-        BakingNeuron(const BakingNeuron&) = delete;
-        BakingNeuron& operator=(const BakingNeuron&) = delete;
-
-        std::vector<int> incomings;
-        float value{ 0.0f };
-        float weight{ 0.0f };
-        int incomingDepth{ 0 };
-        bool isInput{ false };
-        bool isOutput{ false };
+        int neuronIndex;
+        float weight;
     };
 
     struct Neuron
@@ -37,17 +19,22 @@ private:
         Neuron(const Neuron&) = delete;
         Neuron& operator=(const Neuron&) = delete;
 
-        std::vector<Neuron*> incomings;
+        std::vector<Link> links;
         float value{ 0.0f };
-        float weight{ 0.0f };
     };
 
-    using BakingNetwork = std::unordered_map<int, BakingNeuron>;
+    NeuralNetwork() = default;
 
-    void PrebakeNetwork(const Genome& genome, BakingNetwork& bakingNeurons);
-    void ComputeNeuronsDepth(BakingNetwork& bakingNeurons);
+    NeuralNetwork(const NeuralNetwork&) = delete;
+    NeuralNetwork& operator=(const NeuralNetwork&) = delete;
+
+    static bool Validate(int inputs, int outputs, const std::vector<Neuron>& neurons);
+
+    bool Make(int inputs, int outputs, std::vector<Neuron>&& neurons);
+    bool Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs);
 
 private:
     std::vector<Neuron> m_Neurons;
-    int m_OutputsStart{ 0 };
+    int m_Inputs{ 0 };
+    int m_Outputs{ 0 };
 };

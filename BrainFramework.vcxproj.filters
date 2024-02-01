@@ -45,8 +45,12 @@
     <ClInclude Include="src\BrainFramework.hpp">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="NeuralNetwork.hpp" />
-    <ClInclude Include="Utils.hpp" />
+    <ClInclude Include="src\NeuralNetwork.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utils.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\Application.cpp">
@@ -79,7 +83,7 @@
     <ClCompile Include="src\BrainFramework.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="NeuralNetwork.cpp">
+    <ClCompile Include="src\NeuralNetwork.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

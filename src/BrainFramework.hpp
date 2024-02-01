@@ -65,6 +65,8 @@ public:
         return std::move(other);
     }
 
+    bool Generate(NeuralNetwork& neuralNetwork);
+
     void Mutate()
     {
         // Alterate mutation chances
