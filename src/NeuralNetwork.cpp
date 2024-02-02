@@ -1,18 +1,95 @@
 #include "NeuralNetwork.hpp"
 
-bool NeuralNetwork::Validate(int inputs, int outputs, const std::vector<Neuron>& neurons)
+#include "Utils.hpp"
+
+NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, const std::vector<Neuron>& neurons)
 {
-    if (inputs == 0 || outputs == 0 || neurons.empty())
-        return false;
+    const int neuronCount = static_cast<int>(neurons.size());
 
+    // Format
+    if (inputs == 0 || outputs == 0 || neurons.empty() || inputs + outputs < neuronCount)
+        return ValidateResult::InvalidFormat;
 
+    // Links
+    for (const Neuron& neuron : neurons)
+    {
+        for (const Link& link : neuron.links)
+        {
+            if (link.neuronIndex < 0 || link.neuronIndex >= neuronCount)
+            {
+                return ValidateResult::InvalidLink;
+            }
+        }
+    }
 
-    return false;
+    // CyclicDependencies
+    {
+        std::vector<int> neuronDepths;
+        neuronDepths.resize(neuronCount);
+
+        std::queue<int> toCompute;
+        for (int i = 0; i < neuronCount; ++i)
+        {
+            const Neuron& neuron = neurons[i];
+            if (i < inputs)
+            {
+                neuronDepths[i] = 0;
+            }
+            else
+            {
+                neuronDepths[i] = -1;
+                toCompute.push(i);
+            }
+        }
+
+        int cyclicDependencyTimeout = static_cast<int>(toCompute.size());
+        while (!toCompute.empty())
+        {
+            int currentNeuronIndex = toCompute.front();
+            toCompute.pop();
+
+            const Neuron& currentNeuron = neurons[currentNeuronIndex];
+
+            int depth = -1;
+            bool allDetermined = true;
+            for (const Link& link : currentNeuron.links)
+            {
+                int incomingDepth = neuronDepths[link.neuronIndex];
+                if (incomingDepth >= 0)
+                {
+                    depth = std::max(depth, incomingDepth + 1);
+                }
+                else
+                {
+                    allDetermined = false;
+                    break;
+                }
+            }
+
+            if (allDetermined)
+            {
+                neuronDepths[currentNeuronIndex] = depth;
+                cyclicDependencyTimeout = static_cast<int>(toCompute.size());
+            }
+            else
+            {
+                toCompute.push(currentNeuronIndex);
+                cyclicDependencyTimeout--;
+            }
+
+            if (cyclicDependencyTimeout < 0)
+            {
+                return ValidateResult::InvalidCyclicDependency;
+            }
+        }
+    }
+
+    return ValidateResult::Valid;
 }
 
 bool NeuralNetwork::Make(int inputs, int outputs, std::vector<Neuron>&& neurons)
 {
-    if (Validate(inputs, outputs, neurons))
+    if (Validate(inputs, outputs, neurons) == ValidateResult::Valid)
     {
         m_Inputs = inputs;
         m_Outputs = outputs;

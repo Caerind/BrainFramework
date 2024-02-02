@@ -1,16 +1,18 @@
 #pragma once
 
-#include "Utils.hpp"
-
-class Genome;
+#include <vector>
 
 class NeuralNetwork
 {
 public:
     struct Link
     {
-        int neuronIndex;
-        float weight;
+        Link() = default;
+        Link(const Link&) = delete;
+        Link& operator=(const Link&) = delete;
+
+        int neuronIndex{ -1 };
+        float weight{ 0.0f };
     };
 
     struct Neuron
@@ -24,11 +26,18 @@ public:
     };
 
     NeuralNetwork() = default;
-
     NeuralNetwork(const NeuralNetwork&) = delete;
     NeuralNetwork& operator=(const NeuralNetwork&) = delete;
 
-    static bool Validate(int inputs, int outputs, const std::vector<Neuron>& neurons);
+    enum class ValidateResult
+    {
+        Valid,
+        InvalidFormat,
+        InvalidLink,
+        InvalidCyclicDependency
+    };
+
+    static ValidateResult Validate(int inputs, int outputs, const std::vector<Neuron>& neurons);
 
     bool Make(int inputs, int outputs, std::vector<Neuron>&& neurons);
     bool Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs);
