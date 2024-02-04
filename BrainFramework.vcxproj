@@ -20,6 +20,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="demo\Application.hpp" />
+    <ClInclude Include="demo\MoreOrLess.hpp" />
+    <ClInclude Include="demo\NEAT.hpp" />
     <ClInclude Include="ext\imgui\imconfig.h" />
     <ClInclude Include="ext\imgui\imgui.h" />
     <ClInclude Include="ext\imgui\imgui_impl_dx11.h" />
@@ -35,6 +37,7 @@
   <ItemGroup>
     <ClCompile Include="demo\Application.cpp" />
     <ClCompile Include="demo\main.cpp" />
+    <ClCompile Include="demo\NEAT.cpp" />
     <ClCompile Include="ext\imgui\imgui.cpp" />
     <ClCompile Include="ext\imgui\imgui_demo.cpp" />
     <ClCompile Include="ext\imgui\imgui_draw.cpp" />

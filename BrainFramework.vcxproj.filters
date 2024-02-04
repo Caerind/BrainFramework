@@ -51,6 +51,12 @@
     <ClInclude Include="src\Utils.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="demo\NEAT.hpp">
+      <Filter>demo</Filter>
+    </ClInclude>
+    <ClInclude Include="demo\MoreOrLess.hpp">
+      <Filter>demo</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\Application.cpp">
@@ -85,6 +91,9 @@
     </ClCompile>
     <ClCompile Include="src\NeuralNetwork.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="demo\NEAT.cpp">
+      <Filter>demo</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
