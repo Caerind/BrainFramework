@@ -31,6 +31,7 @@
     <ClInclude Include="ext\imgui\imstb_textedit.h" />
     <ClInclude Include="ext\imgui\imstb_truetype.h" />
     <ClInclude Include="src\BrainFramework.hpp" />
+    <ClInclude Include="src\Model.hpp" />
     <ClInclude Include="src\NeuralNetwork.hpp" />
     <ClInclude Include="src\Simulation.hpp" />
     <ClInclude Include="src\Utils.hpp" />
@@ -46,7 +47,6 @@
     <ClCompile Include="ext\imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="ext\imgui\imgui_tables.cpp" />
     <ClCompile Include="ext\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\BrainFramework.cpp" />
     <ClCompile Include="src\NeuralNetwork.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

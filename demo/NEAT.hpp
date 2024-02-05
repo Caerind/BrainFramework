@@ -17,7 +17,6 @@ constexpr float k_StepSize = 0.1f;
 constexpr float k_DisableMutationChance = 0.4f;
 constexpr float k_EnableMutationChance = 0.2f;
 constexpr float k_TimeoutConstant = 20.0f;
-constexpr int k_MaxNodes = 1000000;
 
 class Gene
 {
@@ -65,7 +64,7 @@ public:
         Genome other;
         for (const Gene& gene : m_Genes)
         {
-            other.m_Genes.push_back(gene.Copy());
+            other.m_Genes.push_back(gene);
         }
 
         other.m_MutationChances[Mutations::Connections] = m_MutationChances.at(Mutations::Connections);
@@ -188,20 +187,23 @@ private:
     int m_MaxFitness{ 0 };
 };
 
-class NEATModel : public Model
+class NEAT : public Model
 {
 public:
-    NEATModel() = default;
-    NEATModel(const NEATModel&) = delete;
-    NEATModel& operator=(const NEATModel&) = delete;
+    NEAT() = default;
+    NEAT(const NEAT&) = delete;
+    NEAT& operator=(const NEAT&) = delete;
 
-    bool Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs) override
+    const char* GetName() const override { return "NEAT"; }
+
+    void Train(Simulation& simulation) override
     {
-        return false;
+        // TODO
     }
 
-    const char* GetName() const override { return "NEATModel"; }
-
-private:
-
+    bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
+    {
+        // TODO
+        return false;
+    }
 };

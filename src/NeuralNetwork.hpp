@@ -1,6 +1,9 @@
 #pragma once
 
-#include <vector>
+#include "Utils.hpp"
+
+namespace BrainFramework
+{
 
 class NeuralNetwork
 {
@@ -47,3 +50,5 @@ private:
     int m_Inputs{ 0 };
     int m_Outputs{ 0 };
 };
+
+} // namespace BrainFramework

@@ -2,6 +2,9 @@
 
 #include "Utils.hpp"
 
+namespace BrainFramework
+{
+
 NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, const std::vector<Neuron>& neurons)
 {
     const int neuronCount = static_cast<int>(neurons.size());
@@ -140,3 +143,5 @@ bool NeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float
 
     return true;
 }
+
+} // namespace BrainFramework
