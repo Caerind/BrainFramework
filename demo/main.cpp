@@ -51,8 +51,10 @@ int main()
             {
                 if (simulationPtr->GetResult() == Simulation::Result::None)
                 {
-
+                    //simulationPtr->Initialize(*modelPtr);
                 }
+
+
             }
 
 

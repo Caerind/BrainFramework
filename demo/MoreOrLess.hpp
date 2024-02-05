@@ -12,7 +12,7 @@ public:
     MoreOrLess(const MoreOrLess&) = delete;
     MoreOrLess& operator=(const MoreOrLess&) = delete;
 
-    bool Initialize(Model& model) override
+    bool Initialize(NeuralNetwork& neuralNetwork) override
     {
         m_Inputs.resize(Inputs);
         for (int i = 0; i < Inputs; ++i)
@@ -31,14 +31,14 @@ public:
         m_NumberToGuess = std::rand() % (100 + 1); // [0,100]
         m_Guess = 0;
 
-        return Simulation::Initialize(model);
+        return Simulation::Initialize(neuralNetwork);
     }
 
-    Result Step(Model& model) override
+    Result Step(NeuralNetwork& neuralNetwork) override
     {
         if (m_Guess < 10)
         {
-            const bool result = model.Evaluate(m_Inputs, m_Outputs);
+            const bool result = neuralNetwork.Evaluate(m_Inputs, m_Outputs);
             if (!result)
                 return MarkResult(Result::Failed);
 

@@ -57,6 +57,9 @@
     <ClInclude Include="demo\MoreOrLess.hpp">
       <Filter>demo</Filter>
     </ClInclude>
+    <ClInclude Include="src\Simulation.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\Application.cpp">

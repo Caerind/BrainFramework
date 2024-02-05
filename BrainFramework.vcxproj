@@ -32,6 +32,7 @@
     <ClInclude Include="ext\imgui\imstb_truetype.h" />
     <ClInclude Include="src\BrainFramework.hpp" />
     <ClInclude Include="src\NeuralNetwork.hpp" />
+    <ClInclude Include="src\Simulation.hpp" />
     <ClInclude Include="src\Utils.hpp" />
   </ItemGroup>
   <ItemGroup>
