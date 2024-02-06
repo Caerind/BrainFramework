@@ -178,13 +178,6 @@ public:
     Pool& operator=(const Pool&) = delete;
 
 private:
-    std::vector<Species> m_Species;
-    int m_Generation{ 0 };
-    int m_Innovation{ 0 }; // Outputs (button) count ?
-    int m_CurrentSpecies{ 0 };
-    int m_CurrentGenome{ 0 };
-    int m_CurrentFrame{ 0 };
-    int m_MaxFitness{ 0 };
 };
 
 class NEAT : public Model
@@ -203,7 +196,31 @@ public:
 
     bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
     {
-        // TODO
-        return false;
+        const Genome* bestGenome = nullptr;
+        for (const Species& species : m_Species)
+        {
+            for (const Genome& genome : species.GetGenomes())
+            {
+                if (bestGenome == nullptr || genome.GetScore() > bestGenome->GetScore())
+                {
+                    bestGenome = &genome;
+                }
+            }
+        }
+        if (bestGenome == nullptr)
+        {
+            return false;
+        }
+
+        return genome->MakeNeuralNetwork(neuralNetwork);
     }
+
+private:
+    std::vector<Species> m_Species;
+    int m_Generation{ 0 };
+    int m_Innovation{ 0 }; // Outputs (button) count ?
+    int m_CurrentSpecies{ 0 };
+    int m_CurrentGenome{ 0 };
+    int m_CurrentFrame{ 0 };
+    int m_MaxFitness{ 0 };
 };
