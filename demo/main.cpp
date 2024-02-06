@@ -11,9 +11,9 @@ int main()
 {
     std::srand(std::time(nullptr));
 
-    std::unique_ptr<Model> modelPtr = nullptr;
-    std::unique_ptr<Simulation> simulationPtr = nullptr;
-    NeuralNetwork neuralNetwork;
+    std::unique_ptr<BrainFramework::Model> modelPtr = nullptr;
+    std::unique_ptr<BrainFramework::Simulation> simulationPtr = nullptr;
+    BrainFramework::NeuralNetwork neuralNetwork;
 
     bool isTraining = false;
     bool isPlaying = false;
@@ -91,7 +91,7 @@ int main()
 
                         if (ImGui::Button("Step"))
                         {
-                            if (simulationPtr->GetResult() == Simulation::Result::None)
+                            if (simulationPtr->GetResult() == BrainFramework::Simulation::Result::None)
                             {
                                 modelPtr->MakeBestNeuralNetwork(neuralNetwork);
                                 simulationPtr->Initialize(neuralNetwork);
