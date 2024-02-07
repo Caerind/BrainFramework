@@ -1,22 +1,23 @@
 #pragma once
 
-#include "../src/Utils.hpp"
+#include "../src/BrainFramework.hpp"
 
 constexpr int k_Population = 300;
 constexpr float k_DeltaDisjoint = 2.0f;
 constexpr float k_DeltaWeights = 0.4f;
 constexpr float k_DeltaThreshold = 1.0f;
 constexpr int k_StaleSpecies = 15;
-constexpr float k_MutateConnectionsChance = 0.25f;
+constexpr float k_TimeoutConstant = 20.0f;
+
 constexpr float k_PerturbChance = 0.90f;
 constexpr float k_CrossoverChance = 0.75f;
+constexpr float k_MutateConnectionsChance = 0.25f;
 constexpr float k_LinkMutationChance = 2.0f;
-constexpr float k_NodeMutationChance = 0.50f;
 constexpr float k_BiasMutationChance = 0.40f;
-constexpr float k_StepSize = 0.1f;
-constexpr float k_DisableMutationChance = 0.4f;
+constexpr float k_NodeMutationChance = 0.50f;
 constexpr float k_EnableMutationChance = 0.2f;
-constexpr float k_TimeoutConstant = 20.0f;
+constexpr float k_DisableMutationChance = 0.4f;
+constexpr float k_StepSize = 0.1f;
 
 class Gene
 {
@@ -75,12 +76,10 @@ public:
         other.m_MutationChances[Mutations::Disable] = m_MutationChances.at(Mutations::Disable);
         other.m_MutationChances[Mutations::Step] = m_MutationChances.at(Mutations::Step);
 
-        other.m_MaxNeurons = m_MaxNeurons;
-
         return std::move(other);
     }
 
-    bool Generate(NeuralNetwork& neuralNetwork);
+    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
 
     void Mutate()
     {
@@ -97,12 +96,10 @@ public:
             });
     }
 
-    const std::vector<Gene>& GetGenes() const { return m_Genes; }
-
     static Genome&& Crossover(const Genome& genome1, const Genome& genome2)
     {
         // Make sure genome1 is the higher fitness genome
-        if (genome2.m_Fitness > genome1.m_Fitness)
+        if (genome2.m_Score > genome1.m_Score)
         {
             return Crossover(genome2, genome1);
         }
@@ -127,10 +124,13 @@ public:
             child.m_MutationChances[mutationChance.first] = mutationChance.second;
         }
 
-        child.m_MaxNeurons = std::max(genome1.m_MaxNeurons, genome2.m_MaxNeurons);
-
         return std::move(child);
     }
+
+    const std::vector<Gene>& GetGenes() const { return m_Genes; }
+    const std::unordered_map<Mutations, float>& GetMutationChances() const { return m_MutationChances; }
+    float GetScore() const { return m_Score; }
+    float GetAdjustedScore() const { return m_AdjustedScore; }
 
 private:
     void InitMutationChances()
@@ -167,7 +167,7 @@ private:
     int m_Staleness{ 0 };
 };
 
-class NEAT : public Model
+class NEAT : public BrainFramework::Model
 {
 public:
     NEAT() = default;
@@ -184,7 +184,7 @@ public:
         return Model::StartTraining();
     }
 
-    void Train(Simulation& simulation) override
+    void Train(BrainFramework::Simulation& simulation) override
     {
         // TODO
     }
@@ -216,7 +216,7 @@ public:
         }
     }
 
-    bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
+    bool MakeBestNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) override
     {
         if (IsTraining())
             return false;

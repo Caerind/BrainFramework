@@ -1,6 +1,6 @@
 #include "NEAT.hpp"
 
-bool Genome::Generate(NeuralNetwork& neuralNetwork)
+bool Genome::MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const
 {
     struct BakingNeuron
     {
