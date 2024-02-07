@@ -208,6 +208,9 @@ public:
 
     bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
     {
+        if (IsTraining())
+            return false;
+        
         const Genome* bestGenome = nullptr;
         for (const Species& species : m_Species)
         {
@@ -230,9 +233,7 @@ public:
 private:
     std::vector<Species> m_Species;
     int m_Generation{ 0 };
-    int m_Innovation{ 0 }; // Outputs (button) count ?
+    int m_Innovation{ 0 };
     int m_CurrentSpecies{ 0 };
     int m_CurrentGenome{ 0 };
-    int m_CurrentFrame{ 0 };
-    int m_MaxFitness{ 0 };
 };
