@@ -161,12 +161,13 @@ public:
     Species(const Species&) = delete;
     Species& operator=(const Species&) = delete;
 
+    const std::vector<Genome>& GetGenomes() const { return m_Genomes; }
 
 private:
     std::vector<Genome> m_Genomes;
-    int m_TopFitness{ 0 };
+    float m_TopScore{ 0.0f };
+    float m_AverageScore{ 0.0f };
     int m_Staleness{ 0 };
-    int m_AverageFitness{ 0 };
 };
 
 class NEAT : public Model
@@ -181,6 +182,8 @@ public:
     bool StartTraining() override
     {
         // TODO
+        m_CurrentSpecies = 0;
+        m_CurrentGenome = 0;
         return Model::StartTraining();
     }
 
@@ -191,15 +194,6 @@ public:
 
     bool StopTraining() override
     {
-        // TODO
-        return Model::StopTraining();
-    }
-
-    bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
-    {
-        if (IsTraining())
-            return false;
-        
         const Genome* bestGenome = nullptr;
         for (const Species& species : m_Species)
         {
@@ -211,15 +205,30 @@ public:
                 }
             }
         }
-        if (bestGenome == nullptr)
+
+        Model::StopTraining();
+        
+        if (bestGenome != nullptr)
+        {
+            m_BestGenome = std::move(bestGenome->Copy());
+            return true;
+        }
+        else
         {
             return false;
         }
+    }
 
-        return genome->MakeNeuralNetwork(neuralNetwork);
+    bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
+    {
+        if (IsTraining())
+            return false;
+        
+        return m_BestGenome.MakeNeuralNetwork(neuralNetwork);
     }
 
 private:
+    Genome m_BestGenome;
     std::vector<Species> m_Species;
     int m_Generation{ 0 };
     int m_Innovation{ 0 };
