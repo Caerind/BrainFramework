@@ -59,6 +59,7 @@ int main()
                     {
                         if (ImGui::Button("Train"))
                         {
+                            modelPtr->StartTraining();
                             isTraining = true;
                         }
                     }
@@ -68,6 +69,7 @@ int main()
 
                         if (ImGui::Button("Stop training"))
                         {
+                            modelPtr->StopTraining();
                             isTraining = false;
                         }
                     }
