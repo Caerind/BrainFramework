@@ -147,11 +147,8 @@ private:
 private:
     std::vector<Gene> m_Genes;
     std::unordered_map<Mutations, float> m_MutationChances;
-    int m_MaxNeurons{ 0 }; // Not here ?
-
-    int m_Fitness{ 0 };
-    int m_AdjustedFitness{ 0 };
-    int m_GlobalRank{ 0 }; // Not here ?
+    float m_Score{ 0 };
+    float m_AdjustedScore{ 0 };
 };
 
 class Species
