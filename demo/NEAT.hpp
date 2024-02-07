@@ -189,9 +189,21 @@ public:
 
     const char* GetName() const override { return "NEAT"; }
 
+    bool StartTraining() override
+    {
+        // TODO
+        return Model::StartTraining();
+    }
+
     void Train(Simulation& simulation) override
     {
         // TODO
+    }
+
+    bool StopTraining() override
+    {
+        // TODO
+        return Model::StopTraining();
     }
 
     bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) override
