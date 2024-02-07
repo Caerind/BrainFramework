@@ -158,7 +158,6 @@ class Species
 {
 public:
     Species() = default;
-
     Species(const Species&) = delete;
     Species& operator=(const Species&) = delete;
 
@@ -168,16 +167,6 @@ private:
     int m_TopFitness{ 0 };
     int m_Staleness{ 0 };
     int m_AverageFitness{ 0 };
-};
-
-class Pool
-{
-public:
-    Pool() = default;
-    Pool(const Pool&) = delete;
-    Pool& operator=(const Pool&) = delete;
-
-private:
 };
 
 class NEAT : public Model
