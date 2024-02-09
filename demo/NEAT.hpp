@@ -60,9 +60,9 @@ public:
     Genome(const Genome&) = delete;
     Genome& operator=(const Genome&) = delete;
 
-    Genome&& Copy() const
+    void Copy(Genome& other) const
     {
-        Genome other;
+        other.m_Genes.clear();
         for (const Gene& gene : m_Genes)
         {
             other.m_Genes.push_back(gene);
@@ -75,8 +75,6 @@ public:
         other.m_MutationChances[Mutations::Enable] = m_MutationChances.at(Mutations::Enable);
         other.m_MutationChances[Mutations::Disable] = m_MutationChances.at(Mutations::Disable);
         other.m_MutationChances[Mutations::Step] = m_MutationChances.at(Mutations::Step);
-
-        return std::move(other);
     }
 
     bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
@@ -176,12 +174,12 @@ public:
 
     const char* GetName() const override { return "NEAT"; }
 
-    bool StartTraining() override
+    bool StartTraining(const BrainFramework::Simulation& simulation) override
     {
         // TODO
         m_CurrentSpecies = 0;
         m_CurrentGenome = 0;
-        return Model::StartTraining();
+        return Model::StartTraining(simulation);
     }
 
     void Train(BrainFramework::Simulation& simulation) override
@@ -189,7 +187,7 @@ public:
         // TODO
     }
 
-    bool StopTraining() override
+    bool StopTraining(const BrainFramework::Simulation& simulation) override
     {
         const Genome* bestGenome = nullptr;
         for (const Species& species : m_Species)
@@ -203,11 +201,11 @@ public:
             }
         }
 
-        Model::StopTraining();
+        Model::StopTraining(simulation);
         
         if (bestGenome != nullptr)
         {
-            m_BestGenome = std::move(bestGenome->Copy());
+            bestGenome->Copy(m_BestGenome);
             return true;
         }
         else
