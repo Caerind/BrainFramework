@@ -2,10 +2,6 @@
 
 #include "../src/BrainFramework.hpp"
 
-constexpr int k_Population = 300;
-constexpr float k_DeltaDisjoint = 2.0f;
-constexpr float k_DeltaWeights = 0.4f;
-constexpr float k_DeltaThreshold = 1.0f;
 constexpr int k_StaleSpecies = 15;
 constexpr float k_TimeoutConstant = 20.0f;
 
@@ -52,32 +48,43 @@ public:
         Step
     };
 
-    Genome()
+    Genome(int inputs, int outputs, bool generateIOGenes)
+        : m_Inputs(inputs)
+        , m_Outputs(outputs)
     {
-        InitMutationChances();
+        m_MutationChances[Mutations::Connections] = k_MutateConnectionsChance;
+        m_MutationChances[Mutations::Links] = k_LinkMutationChance;
+        m_MutationChances[Mutations::Bias] = k_BiasMutationChance;
+        m_MutationChances[Mutations::Node] = k_NodeMutationChance;
+        m_MutationChances[Mutations::Enable] = k_EnableMutationChance;
+        m_MutationChances[Mutations::Disable] = k_DisableMutationChance;
+        m_MutationChances[Mutations::Step] = k_StepSize;
+
+        if (generateIOGenes)
+        {
+            // TODO
+        }
     }
 
     Genome(const Genome&) = delete;
     Genome& operator=(const Genome&) = delete;
 
-    void Copy(Genome& other) const
+    void Copy(const Genome& other)
     {
-        other.m_Genes.clear();
-        for (const Gene& gene : m_Genes)
+        m_Genes.clear();
+        for (const Gene& gene : other.m_Genes)
         {
-            other.m_Genes.push_back(gene);
+            m_Genes.push_back(gene);
         }
 
-        other.m_MutationChances[Mutations::Connections] = m_MutationChances.at(Mutations::Connections);
-        other.m_MutationChances[Mutations::Links] = m_MutationChances.at(Mutations::Links);
-        other.m_MutationChances[Mutations::Bias] = m_MutationChances.at(Mutations::Bias);
-        other.m_MutationChances[Mutations::Node] = m_MutationChances.at(Mutations::Node);
-        other.m_MutationChances[Mutations::Enable] = m_MutationChances.at(Mutations::Enable);
-        other.m_MutationChances[Mutations::Disable] = m_MutationChances.at(Mutations::Disable);
-        other.m_MutationChances[Mutations::Step] = m_MutationChances.at(Mutations::Step);
+        m_MutationChances[Mutations::Connections] = other.m_MutationChances.at(Mutations::Connections);
+        m_MutationChances[Mutations::Links] = other.m_MutationChances.at(Mutations::Links);
+        m_MutationChances[Mutations::Bias] = other.m_MutationChances.at(Mutations::Bias);
+        m_MutationChances[Mutations::Node] = other.m_MutationChances.at(Mutations::Node);
+        m_MutationChances[Mutations::Enable] = other.m_MutationChances.at(Mutations::Enable);
+        m_MutationChances[Mutations::Disable] = other.m_MutationChances.at(Mutations::Disable);
+        m_MutationChances[Mutations::Step] = other.m_MutationChances.at(Mutations::Step);
     }
-
-    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
 
     void Mutate()
     {
@@ -87,12 +94,13 @@ public:
             mutationChance.second *= (rand() % 2 == 0) ? 0.95f : 1.05263f;
         }
 
-
         // Sort genes
         std::sort(m_Genes.begin(), m_Genes.end(), [](const Gene& a, const Gene& b) {
             return a.GetOut() < b.GetOut();
-            });
+        });
     }
+
+    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
 
     static Genome&& Crossover(const Genome& genome1, const Genome& genome2)
     {
@@ -102,7 +110,7 @@ public:
             return Crossover(genome2, genome1);
         }
 
-        Genome child;
+        Genome child(genome1.m_Inputs, genome1.m_Outputs, false);
 
         std::unordered_map<int, Gene> innovations2;
         for (const Gene& gene : genome2.m_Genes)
@@ -131,18 +139,8 @@ public:
     float GetAdjustedScore() const { return m_AdjustedScore; }
 
 private:
-    void InitMutationChances()
-    {
-        m_MutationChances[Mutations::Connections] = k_MutateConnectionsChance;
-        m_MutationChances[Mutations::Links] = k_LinkMutationChance;
-        m_MutationChances[Mutations::Bias] = k_BiasMutationChance;
-        m_MutationChances[Mutations::Node] = k_NodeMutationChance;
-        m_MutationChances[Mutations::Enable] = k_EnableMutationChance;
-        m_MutationChances[Mutations::Disable] = k_DisableMutationChance;
-        m_MutationChances[Mutations::Step] = k_StepSize;
-    }
-
-private:
+    int m_Inputs;
+    int m_Outputs;
     std::vector<Gene> m_Genes;
     std::unordered_map<Mutations, float> m_MutationChances;
     float m_Score{ 0 };
@@ -156,7 +154,76 @@ public:
     Species(const Species&) = delete;
     Species& operator=(const Species&) = delete;
 
+    bool SameSpecies(const Genome& genome)
+    {
+        constexpr float k_DeltaDisjoint = 2.0f;
+        constexpr float k_DeltaWeights = 0.4f;
+        constexpr float k_DeltaThreshold = 1.0f;
+
+        const Genome& firstGenome = m_Genomes[0];
+
+        float deltaDisjoint = k_DeltaDisjoint * Disjoint(genome.GetGenes(), firstGenome.GetGenes());
+        float deltaWeights = k_DeltaWeights * Weights(genome.GetGenes(), firstGenome.GetGenes());
+        return deltaDisjoint + deltaWeights < k_DeltaThreshold;
+    }
+
+    void AddGenome(Genome&& genome)
+    {
+        m_Genomes.push_back(std::move(genome));
+    }
+
     const std::vector<Genome>& GetGenomes() const { return m_Genomes; }
+
+private:
+    static float Disjoint(const std::vector<Gene>& genes1, const std::vector<Gene>& genes2)
+    {
+        std::unordered_set<int> innovationSet1;
+        for (const Gene& gene : genes1)
+            innovationSet1.insert(gene.GetInnovation());
+
+        std::unordered_set<int> innovationSet2;
+        for (const Gene& gene : genes2)
+            innovationSet2.insert(gene.GetInnovation());
+
+        int disjointGenes = 0;
+        for (const Gene& gene : genes1)
+        {
+            if (innovationSet2.find(gene.GetInnovation()) == innovationSet2.end())
+                disjointGenes++;
+        }
+        for (const Gene& gene : genes2)
+        {
+            if (innovationSet1.find(gene.GetInnovation()) == innovationSet1.end())
+                disjointGenes++;
+        }
+
+        const int maxGenesCount = static_cast<int>(genes1.size() > genes2.size() ? genes1.size() : genes2.size());
+        return maxGenesCount > 0 ? static_cast<float>(disjointGenes) / maxGenesCount : 0.0f;
+    }
+
+    static float Weights(const std::vector<Gene>& genes1, const std::vector<Gene>& genes2)
+    {
+        std::unordered_map<int, const Gene*> innovationToGene;
+        for (const Gene& gene : genes2)
+        {
+            innovationToGene[gene.GetInnovation()] = &gene;
+        }
+
+        float weightDifferenceSum = 0.0f;
+        int coincidentGenesCount = 0;
+
+        for (const Gene& gene : genes1)
+        {
+            auto itr = innovationToGene.find(gene.GetInnovation());
+            if (itr != innovationToGene.end())
+            {
+                weightDifferenceSum += std::abs(gene.GetWeight() - itr->second->GetWeight());
+                coincidentGenesCount++;
+            }
+        }
+
+        return coincidentGenesCount > 0 ? weightDifferenceSum / coincidentGenesCount : 0.0f;
+    }
 
 private:
     std::vector<Genome> m_Genomes;
@@ -176,7 +243,13 @@ public:
 
     bool StartTraining(const BrainFramework::Simulation& simulation) override
     {
-        // TODO
+        for (int i = 0; i < k_Population; ++i)
+        {
+            Genome genome(simulation.GetInputsCount(), simulation.GetOutputsCount(), true);
+            genome.Mutate();
+            AddToSpecies(std::move(genome));
+        }
+
         m_CurrentSpecies = 0;
         m_CurrentGenome = 0;
         return Model::StartTraining(simulation);
@@ -205,7 +278,7 @@ public:
         
         if (bestGenome != nullptr)
         {
-            bestGenome->Copy(m_BestGenome);
+            m_BestGenome.Copy(*bestGenome);
             return true;
         }
         else
@@ -222,6 +295,21 @@ public:
         return m_BestGenome.MakeNeuralNetwork(neuralNetwork);
     }
 
+    void AddToSpecies(Genome&& genome)
+    {
+        for (Species& species : m_Species)
+        {
+            if (species.SameSpecies(genome))
+            {
+                species.AddGenome(std::move(genome));
+                return;
+            }
+        }
+        
+        Species& species = m_Species.emplace_back();
+        species.AddGenome(std::move(genome));
+    }
+
 private:
     Genome m_BestGenome;
     std::vector<Species> m_Species;
@@ -229,4 +317,6 @@ private:
     int m_Innovation{ 0 };
     int m_CurrentSpecies{ 0 };
     int m_CurrentGenome{ 0 };
+
+    static constexpr int k_Population = 300;
 };

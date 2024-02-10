@@ -183,66 +183,6 @@ function mutate(genome)
 	end
 end
 
-function disjoint(genes1, genes2)
-	local i1 = {}
-	for i = 1,#genes1 do
-		local gene = genes1[i]
-		i1[gene.innovation] = true
-	end
-
-	local i2 = {}
-	for i = 1,#genes2 do
-		local gene = genes2[i]
-		i2[gene.innovation] = true
-	end
-	
-	local disjointGenes = 0
-	for i = 1,#genes1 do
-		local gene = genes1[i]
-		if not i2[gene.innovation] then
-			disjointGenes = disjointGenes+1
-		end
-	end
-	
-	for i = 1,#genes2 do
-		local gene = genes2[i]
-		if not i1[gene.innovation] then
-			disjointGenes = disjointGenes+1
-		end
-	end
-	
-	local n = math.max(#genes1, #genes2)
-	
-	return disjointGenes / n
-end
-
-function weights(genes1, genes2)
-	local i2 = {}
-	for i = 1,#genes2 do
-		local gene = genes2[i]
-		i2[gene.innovation] = gene
-	end
-
-	local sum = 0
-	local coincident = 0
-	for i = 1,#genes1 do
-		local gene = genes1[i]
-		if i2[gene.innovation] ~= nil then
-			local gene2 = i2[gene.innovation]
-			sum = sum + math.abs(gene.weight - gene2.weight)
-			coincident = coincident + 1
-		end
-	end
-	
-	return sum / coincident
-end
-	
-function sameSpecies(genome1, genome2)
-	local dd = DeltaDisjoint*disjoint(genome1.genes, genome2.genes)
-	local dw = DeltaWeights*weights(genome1.genes, genome2.genes) 
-	return dd + dw < DeltaThreshold
-end
-
 function rankGlobally()
 	local global = {}
 	for s = 1,#pool.species do
@@ -354,24 +294,6 @@ function removeWeakSpecies()
 	pool.species = survived
 end
 
-
-function addToSpecies(child)
-	local foundSpecies = false
-	for s=1,#pool.species do
-		local species = pool.species[s]
-		if not foundSpecies and sameSpecies(child, species.genomes[1]) then
-			table.insert(species.genomes, child)
-			foundSpecies = true
-		end
-	end
-	
-	if not foundSpecies then
-		local childSpecies = newSpecies()
-		table.insert(childSpecies.genomes, child)
-		table.insert(pool.species, childSpecies)
-	end
-end
-
 function newGeneration()
 	cullSpecies(false) -- Cull the bottom half of each species
 	rankGlobally()
@@ -417,14 +339,6 @@ function initializePool()
 	initializeRun()
 end
 
-function clearJoypad()
-	controller = {}
-	for b = 1,#ButtonNames do
-		controller["P1 " .. ButtonNames[b]] = false
-	end
-	joypad.set(controller)
-end
-
 function initializeRun()
 	savestate.load(Filename);
 	rightmost = 0
@@ -437,30 +351,6 @@ function initializeRun()
 	generateNetwork(genome)
 	evaluateCurrent()
 end
-
-function evaluateCurrent()
-	local species = pool.species[pool.currentSpecies]
-	local genome = species.genomes[pool.currentGenome]
-
-	inputs = getInputs()
-	controller = evaluateNetwork(genome.network, inputs)
-	
-	if controller["P1 Left"] and controller["P1 Right"] then
-		controller["P1 Left"] = false
-		controller["P1 Right"] = false
-	end
-	if controller["P1 Up"] and controller["P1 Down"] then
-		controller["P1 Up"] = false
-		controller["P1 Down"] = false
-	end
-
-	joypad.set(controller)
-end
-
-if pool == nil then
-	initializePool()
-end
-
 
 function nextGenome()
 	pool.currentGenome = pool.currentGenome + 1
@@ -630,26 +520,6 @@ function playTop()
 	return
 end
 
-function startPool()
-	if firstStart == true then
-		runAI = true
-		firstStart = false
-		writeFile("temp.pool")
-	else
-		if runAI == true then
-			runAI = false
-		else
-			runAI = true
-		end
-	end
-end
-
-function onExit()
-	forms.destroy(form)
-end
-
-event.onexit(onExit)
-
 firstStart = true
 runAI = false
 
@@ -657,7 +527,6 @@ form = forms.newform(250, 335, "Fitness")
 maxFitnessLabel = forms.label(form, "Max Fitness: " .. math.floor(pool.maxFitness), 5, 8)
 showNetwork = forms.checkbox(form, "Show Map", 6, 30)
 showMutationRates = forms.checkbox(form, "Show M-Rates", 6, 52)
-startButton = forms.button(form, "Start", startPool, 5, 77)
 restartButton = forms.button(form, "Restart", initializePool, 5, 102)
 saveButton = forms.button(form, "Save", savePool, 154, 77)
 loadButton = forms.button(form, "Load", loadPool, 154, 102)
@@ -685,10 +554,6 @@ while true do
 		
 		if forms.ischecked(showNetwork) then
 			displayGenome(genome)
-		end
-
-		if forms.gettext(startButton) == "Start" then
-			forms.settext(startButton, "Stop")
 		end
 
 		if pool.currentFrame%5 == 0 then
@@ -752,10 +617,6 @@ while true do
 		end
 			
 		pool.currentFrame = pool.currentFrame + 1
-	else
-		if forms.gettext(startButton) == "Stop" then
-			forms.settext(startButton, "Start")
-		end
 	end
 	emu.frameadvance();
 end

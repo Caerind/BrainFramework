@@ -15,6 +15,7 @@ int main()
     std::unique_ptr<BrainFramework::Simulation> simulationPtr = nullptr;
     BrainFramework::NeuralNetwork neuralNetwork;
 
+    int trainingSteps = 10;
     bool isTraining = false;
     bool isPlaying = false;
 
@@ -57,19 +58,26 @@ int main()
                 {
                     if (!isTraining)
                     {
+                        ImGui::InputInt("TrainingSteps", &trainingSteps);
+                        if (trainingSteps < 1)
+                            trainingSteps = 1;
+
                         if (ImGui::Button("Train"))
                         {
-                            modelPtr->StartTraining();
+                            modelPtr->StartTraining(*simulationPtr);
                             isTraining = true;
                         }
                     }
                     else
                     {
-                        modelPtr->Train(*simulationPtr);
+                        for (int i = 0; i < trainingSteps; ++i)
+                        {
+                            modelPtr->Train(*simulationPtr);
+                        }
 
                         if (ImGui::Button("Stop training"))
                         {
-                            modelPtr->StopTraining();
+                            modelPtr->StopTraining(*simulationPtr);
                             isTraining = false;
                         }
                     }
