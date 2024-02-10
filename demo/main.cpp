@@ -9,7 +9,7 @@
 
 int main()
 {
-    std::srand(std::time(nullptr));
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     std::unique_ptr<BrainFramework::Model> modelPtr = nullptr;
     std::unique_ptr<BrainFramework::Simulation> simulationPtr = nullptr;

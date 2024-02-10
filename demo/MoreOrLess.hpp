@@ -2,7 +2,7 @@
 
 #include "../src/BrainFramework.hpp"
 
-class MoreOrLess : public Simulation
+class MoreOrLess : public BrainFramework::Simulation
 {
 public:
     static constexpr int Inputs = 20;
@@ -12,7 +12,7 @@ public:
     MoreOrLess(const MoreOrLess&) = delete;
     MoreOrLess& operator=(const MoreOrLess&) = delete;
 
-    bool Initialize(NeuralNetwork& neuralNetwork) override
+    bool Initialize(BrainFramework::NeuralNetwork& neuralNetwork) override
     {
         m_Inputs.resize(Inputs);
         for (int i = 0; i < Inputs; ++i)
@@ -34,7 +34,7 @@ public:
         return Simulation::Initialize(neuralNetwork);
     }
 
-    Result Step(NeuralNetwork& neuralNetwork) override
+    Result Step(BrainFramework::NeuralNetwork& neuralNetwork) override
     {
         if (m_Guess < 10)
         {
