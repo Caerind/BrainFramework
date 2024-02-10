@@ -6,10 +6,33 @@ class Gene
 {
 public:
     Gene() = default;
+    Gene(int in, int out, float weight, bool enabled, int innovation)
+        : m_Weight(weight)
+        , m_In(in)
+        , m_Out(out)
+        , m_Innovation(innovation)
+        , m_Enabled(enabled)
+    {
+    }
 
-    float GetWeight() const { return m_Weight; }
+    void CopyFrom(const Gene& other)
+    {
+        m_Weight = other.m_Weight;
+        m_In = other.m_In;
+        m_Out = other.m_Out;
+        m_Innovation = other.m_Innovation;
+        m_Enabled = other.m_Enabled;
+    }
+
+    void SetIn(int in) { m_In = in; }
+    void SetOut(int out) { m_Out = out; }
+    void SetWeight(float weight) { m_Weight = weight; }
+    void SetEnabled(bool enabled) { m_Enabled = enabled; }
+    void SetInnovation(int innovation) { m_Innovation = innovation; }
+
     int GetIn() const { return m_In; }
     int GetOut() const { return m_Out; }
+    float GetWeight() const { return m_Weight; }
     bool IsEnabled() const { return m_Enabled; }
     int GetInnovation() const { return m_Innovation; }
 
@@ -53,6 +76,7 @@ public:
     {
         m_Inputs = other.m_Inputs;
         m_Outputs = other.m_Outputs;
+        m_MaxNeurons = other.m_MaxNeurons;
 
         for (const Gene& gene : other.m_Genes)
         {
@@ -68,41 +92,6 @@ public:
         m_MutationChances[Mutations::Step] = other.m_MutationChances.at(Mutations::Step);
     }
 
-    void Initialize(int inputs, int outputs)
-    {
-        m_Inputs = inputs;
-        m_Outputs = outputs;
-        // TODO : IO Genes
-    }
-
-    void Mutate()
-    {
-        // Alterate mutation chances
-        for (auto& mutationChance : m_MutationChances)
-        {
-            mutationChance.second *= (rand() % 2 == 0) ? 0.95f : 1.05263f;
-        }
-
-        // Sort genes
-        std::sort(m_Genes.begin(), m_Genes.end(), [](const Gene& a, const Gene& b) {
-            return a.GetOut() < b.GetOut();
-        });
-
-        // TODO
-    }
-
-    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
-
-    void UpdateGlobalRank(int globalRank) // Ranks are inverted
-    {
-        m_GlobalRank = globalRank;
-    }
-
-    void SetScore(float score)
-    {
-        m_Score = score;
-    }
-
     void Crossover(const Genome& genome1, const Genome& genome2)
     {
         // Make sure genome1 is the higher fitness genome
@@ -114,6 +103,7 @@ public:
 
         m_Inputs = genome1.m_Inputs;
         m_Outputs = genome1.m_Outputs;
+        m_MaxNeurons = (genome1.m_MaxNeurons > genome2.m_MaxNeurons) ? genome1.m_MaxNeurons : genome2.m_MaxNeurons;
 
         std::unordered_map<int, Gene> innovations2;
         for (const Gene& gene : genome2.m_Genes)
@@ -134,18 +124,204 @@ public:
         }
     }
 
+    void Initialize(int inputs, int outputs)
+    {
+        m_Inputs = inputs;
+        m_Outputs = outputs;
+        m_MaxNeurons = m_Inputs + m_Outputs;
+    }
+
+    void Mutate()
+    {
+        // Alterate mutation chances
+        for (auto& mutationChance : m_MutationChances)
+        {
+            mutationChance.second *= (rand() % 2 == 0) ? 0.95f : 1.05263f;
+        }
+
+        if (BrainFramework::RandomFloat() < m_MutationChances[Mutations::Connections])
+            PointMutate();
+
+        float p = static_cast<float>(m_MutationChances[Mutations::Links]);
+        while (p > 0.0f)
+        {
+            if (BrainFramework::RandomFloat() < p)
+                LinkMutate(false);
+            p -= 1.0f;
+        }
+        
+        p = static_cast<float>(m_MutationChances[Mutations::Bias]);
+        while (p > 0.0f)
+        {
+            if (BrainFramework::RandomFloat() < p)
+                LinkMutate(true);
+            p -= 1.0f;
+        }
+
+        p = static_cast<float>(m_MutationChances[Mutations::Node]);
+        while (p > 0.0f)
+        {
+            if (BrainFramework::RandomFloat() < p)
+                NodeMutate();
+            p -= 1.0f;
+        }
+
+        p = static_cast<float>(m_MutationChances[Mutations::Enable]);
+        while (p > 0.0f)
+        {
+            if (BrainFramework::RandomFloat() < p)
+                EnableDisableMutate(true);
+            p -= 1.0f;
+        }
+
+        p = static_cast<float>(m_MutationChances[Mutations::Disable]);
+        while (p > 0.0f)
+        {
+            if (BrainFramework::RandomFloat() < p)
+                EnableDisableMutate(false);
+            p -= 1.0f;
+        }
+    }
+
+    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
+
+    void UpdateGlobalRank(int globalRank) { m_GlobalRank = globalRank; }
+    void SetScore(float score) { m_Score = score; }
+
+    static int GetNewInnovation() { return ms_Innovation++; }
+    static void ResetInnovation() { ms_Innovation = 0; }
+
     const std::vector<Gene>& GetGenes() const { return m_Genes; }
     const std::unordered_map<Mutations, float>& GetMutationChances() const { return m_MutationChances; }
     int GetInputs() const { return m_Inputs; }
     int GetOutputs() const { return m_Outputs; }
+    int GetMaxNeurons() const { return m_MaxNeurons; }
     int GetGlobalRank() const { return m_GlobalRank; }
     float GetScore() const { return m_Score; }
 
 private:
+    int RandomNeuron(bool nonInput)
+    {
+        std::unordered_map<int, bool> neurons;
+
+        if (!nonInput) 
+        {
+            for (int i = 0; i < m_Inputs; ++i)
+                neurons[i] = true;
+        }
+
+        for (int o = 0; o < m_Outputs; ++o)
+            neurons[m_Inputs + o] = true;
+
+        for (const auto& gene : m_Genes)
+        {
+            if ((!nonInput) || (gene.GetIn() > m_Inputs))
+                neurons[gene.GetIn()] = true;
+            if ((!nonInput) || (gene.GetOut() > m_Inputs))
+                neurons[gene.GetOut()] = true;
+        }
+
+        int n = BrainFramework::RandomIndex(neurons);
+        for (const auto& entry : neurons) 
+        {
+            n--;
+            if (n == 0)
+                return entry.first;
+        }
+
+        return 0;
+    }
+
+    bool ContainsLink(int in, int out)
+    {
+        for (const Gene& gene : m_Genes)
+            if (gene.GetIn() == in && gene.GetOut() == out)
+                return true;
+        return false;
+    }
+
+    void PointMutate()
+    {
+        float step = m_MutationChances[Mutations::Step];
+        for (Gene& gene : m_Genes)
+        {
+            if (BrainFramework::RandomFloat() < k_PerturbChance)
+            {
+                gene.SetWeight(gene.GetWeight() + BrainFramework::RandomFloat() * step * 2.0f - step);
+            }
+            else
+            {
+                gene.SetWeight(BrainFramework::RandomFloat() * 4.0f - 2.0f);
+            }
+        }
+    }
+
+    void LinkMutate(bool forceInputBias)
+    {
+        int neuron1 = RandomNeuron(false);
+        int neuron2 = RandomNeuron(true);
+
+        if (neuron1 <= m_Inputs && neuron2 <= m_Inputs)
+            return;
+        if (neuron2 <= m_Inputs)
+            std::swap(neuron1, neuron2);
+
+        if (forceInputBias)
+            neuron1 = BrainFramework::RandomInt(0, m_Inputs);
+
+        if (ContainsLink(neuron1, neuron2))
+            return;
+
+        Gene& gene = m_Genes.emplace_back(neuron1, neuron2, BrainFramework::RandomFloat() * 4.0f - 2.0f, true, GetNewInnovation());
+    }
+
+    void NodeMutate()
+    {
+        if (m_Genes.empty())
+            return;
+
+        m_MaxNeurons++;
+
+        Gene& gene = m_Genes[BrainFramework::RandomIndex(m_Genes)];
+        if (!gene.IsEnabled())
+            return;
+        gene.SetEnabled(false);
+
+        Gene& gene1 = m_Genes.emplace_back();
+        gene1.CopyFrom(gene);
+        gene1.SetOut(m_MaxNeurons);
+        gene1.SetWeight(1.0f);
+        gene1.SetInnovation(GetNewInnovation());
+        gene1.SetEnabled(true);
+
+        Gene& gene2 = m_Genes.emplace_back();
+        gene2.CopyFrom(gene);
+        gene2.SetIn(m_MaxNeurons);
+        gene2.SetInnovation(GetNewInnovation());
+        gene2.SetEnabled(true);
+    }
+
+    void EnableDisableMutate(bool enable)
+    {
+        std::vector<Gene*> candidates;
+        candidates.reserve(m_Genes.size());
+        for (Gene& gene : m_Genes)
+            if (gene.IsEnabled() != enable)
+                candidates.push_back(&gene);
+
+        if (candidates.empty())
+            return;
+
+        Gene* candidate = candidates[BrainFramework::RandomIndex(candidates)];
+        candidate->SetEnabled(!candidate->IsEnabled());
+    }
+
+private:
     std::vector<Gene> m_Genes;
     std::unordered_map<Mutations, float> m_MutationChances;
-    int m_Inputs;
-    int m_Outputs;
+    int m_Inputs{ 0 };
+    int m_Outputs{ 0 };
+    int m_MaxNeurons{ 0 };
     int m_GlobalRank{ 0 };
     float m_Score{ 0.0f };
 
@@ -157,6 +333,8 @@ private:
     static constexpr float k_EnableMutationChance = 0.2f;
     static constexpr float k_DisableMutationChance = 0.4f;
     static constexpr float k_StepSize = 0.1f;
+
+    static inline int ms_Innovation = 0;
 };
 
 class Species
@@ -323,6 +501,8 @@ public:
     {
         if (m_Species.empty())
         {
+            Reset();
+
             for (int i = 0; i < k_Population; ++i)
             {
                 Genome genome;
@@ -392,6 +572,12 @@ public:
             return false;
         
         return m_BestGenome.MakeNeuralNetwork(neuralNetwork);
+    }
+
+    void Reset()
+    {
+        Genome::ResetInnovation();
+        m_Species.clear();
     }
 
     void NextGenome()
@@ -512,6 +698,7 @@ public:
             return a->GetScore() < b->GetScore();
         });
 
+        // Ranks are inverted to be used for Fitness computation
         const int allGenomesCount = static_cast<int>(allGenomes.size());
         for (int i = 0; i < allGenomesCount; ++i)
         {
@@ -519,12 +706,15 @@ public:
         }
     }
 
+    float GetMaxScore() const { return m_MaxScore; }
+    int GetGeneration() const { return m_Generation; }
+    int GetSpecies() const { return static_cast<int>(m_Species.size()); }
+
 private:
     Genome m_BestGenome;
     std::vector<Species> m_Species;
     float m_MaxScore{ 0.0f };
     int m_Generation{ 0 };
-    int m_Innovation{ 0 };
     int m_CurrentSpecies{ 0 };
     int m_CurrentGenome{ 0 };
 

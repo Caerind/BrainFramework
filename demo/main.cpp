@@ -15,7 +15,7 @@ int main()
     std::unique_ptr<BrainFramework::Simulation> simulationPtr = nullptr;
     BrainFramework::NeuralNetwork neuralNetwork;
 
-    int trainingSteps = 10;
+    int trainingSteps = 1000;
     bool isTraining = false;
     bool isPlaying = false;
 
@@ -79,6 +79,16 @@ int main()
                         {
                             modelPtr->StopTraining(*simulationPtr);
                             isTraining = false;
+                        }
+
+                        if (NEAT* neat = dynamic_cast<NEAT*>(modelPtr.get()))
+                        {
+                            ImGui::Text("NEAT:");
+                            ImGui::Indent();
+                            ImGui::Text("MaxScore: %f", neat->GetMaxScore());
+                            ImGui::Text("Generation: %d", neat->GetGeneration());
+                            ImGui::Text("Species: %d", neat->GetSpecies());
+                            ImGui::Unindent();
                         }
                     }
                 }
