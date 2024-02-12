@@ -194,9 +194,9 @@ public:
         }
     }
 
-    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const
+    bool MakeNeuralNetwork(BrainFramework::BasicNeuralNetwork& neuralNetwork) const
     {
-        std::vector<BrainFramework::NeuralNetwork::Neuron> neurons;
+        std::vector<BrainFramework::BasicNeuralNetwork::Neuron> neurons;
         neurons.reserve(m_MaxNeurons);
 
         // Inputs
@@ -577,7 +577,7 @@ public:
     {
         Genome& genome = m_Species[m_CurrentSpecies].GetGenomes()[m_CurrentGenome];
 
-        BrainFramework::NeuralNetwork neuralNetwork;
+        BrainFramework::BasicNeuralNetwork neuralNetwork;
         if (!genome.MakeNeuralNetwork(neuralNetwork))
         {
             return false;
@@ -627,12 +627,17 @@ public:
         }
     }
 
-    bool MakeBestNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) override
+    bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
     {
         if (IsTraining())
             return false;
         
-        return m_BestGenome.MakeNeuralNetwork(neuralNetwork);
+        std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
+        const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
+
+        neuralNetwork = std::move(basicNeuralNetwork);
+
+        return result;
     }
 
     void Reset()

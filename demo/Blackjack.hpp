@@ -50,8 +50,8 @@ public:
 
         int c1 = PickCard();
         int c2 = PickCard();
-        m_Inputs[0] = static_cast<int>(c1);
-        m_Inputs[1] = static_cast<int>(c2);
+        m_Inputs[0] = static_cast<float>(c1);
+        m_Inputs[1] = static_cast<float>(c2);
 
         m_Hand = c1 + c2;
         m_Cards = 2;
@@ -74,7 +74,7 @@ public:
         if (m_Outputs[0] > 0.0f)
         {
             int card = PickCard();
-            m_Inputs[m_Cards] = static_cast<int>(card);
+            m_Inputs[m_Cards] = static_cast<float>(card);
             m_Hand += card;
             m_Cards++;
 

@@ -216,9 +216,9 @@ public:
         }
     }
 
-    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const
+    bool MakeNeuralNetwork(BrainFramework::BasicNeuralNetwork& neuralNetwork) const
     {
-        std::vector<BrainFramework::NeuralNetwork::Neuron> neurons;
+        std::vector<BrainFramework::BasicNeuralNetwork::Neuron> neurons;
         neurons.reserve(m_MaxNeurons);
 
         // Inputs
@@ -419,10 +419,10 @@ public:
         ImGui::Text("averageScoreTop10: %f", m_AverageScoreTop10);
         ImGui::Text("averageScore: %f", m_AverageScore);
 
-        ImGui::PlotHistogram("MaxLifetime", m_LifetimeArray.data(), m_LifetimeArray.size(), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
-        ImGui::PlotHistogram("AverageScoreTop5", m_AverageScoreTop5Array.data(), m_AverageScoreTop5Array.size(), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
-        ImGui::PlotHistogram("AverageScoreTop10", m_AverageScoreTop10Array.data(), m_AverageScoreTop10Array.size(), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
-        ImGui::PlotHistogram("AverageScore", m_AverageScoreArray.data(), m_AverageScoreArray.size(), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
+        ImGui::PlotHistogram("MaxLifetime", m_LifetimeArray.data(), static_cast<int>(m_LifetimeArray.size()), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
+        ImGui::PlotHistogram("AverageScoreTop5", m_AverageScoreTop5Array.data(), static_cast<int>(m_AverageScoreTop5Array.size()), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
+        ImGui::PlotHistogram("AverageScoreTop10", m_AverageScoreTop10Array.data(), static_cast<int>(m_AverageScoreTop10Array.size()), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
+        ImGui::PlotHistogram("AverageScore", m_AverageScoreArray.data(), static_cast<int>(m_AverageScoreArray.size()), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
 
         ImGui::Text("BestGenome:");
         ImGui::Indent();
@@ -455,7 +455,7 @@ public:
     {
         Genome& genome = m_Genomes[m_CurrentGenome];
 
-        BrainFramework::NeuralNetwork neuralNetwork;
+        BrainFramework::BasicNeuralNetwork neuralNetwork;
         if (!genome.MakeNeuralNetwork(neuralNetwork))
         {
             return false;
@@ -488,12 +488,17 @@ public:
         return true;
     }
 
-    bool MakeBestNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) override
+    bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
     {
         if (IsTraining())
             return false;
 
-        return m_BestGenome.MakeNeuralNetwork(neuralNetwork);
+        std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
+        const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
+
+        neuralNetwork = std::move(basicNeuralNetwork);
+
+        return result;
     }
 
     void NextGenome()

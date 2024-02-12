@@ -18,7 +18,7 @@ int main()
 
     std::unique_ptr<BrainFramework::Model> modelPtr = nullptr;
     std::unique_ptr<BrainFramework::Simulation> simulationPtr = nullptr;
-    BrainFramework::NeuralNetwork neuralNetwork;
+    std::unique_ptr<BrainFramework::NeuralNetwork> neuralNetworkPtr = nullptr;
 
     int trainingSteps = 1000;
     bool isTraining = false;
@@ -111,8 +111,8 @@ int main()
                         {
                             isPlaying = true;
 
-                            modelPtr->MakeBestNeuralNetwork(neuralNetwork);
-                            simulationPtr->Initialize(neuralNetwork);
+                            modelPtr->MakeBestNeuralNetwork(neuralNetworkPtr);
+                            simulationPtr->Initialize(*neuralNetworkPtr);
                         }
                     }
                     else
@@ -126,7 +126,7 @@ int main()
                         {
                             if (ImGui::Button("Step"))
                             {
-                                simulationPtr->Step(neuralNetwork);
+                                simulationPtr->Step(*neuralNetworkPtr);
                             }
                         }
 

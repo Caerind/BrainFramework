@@ -18,7 +18,7 @@ public:
     virtual bool StopTraining(const Simulation& simulation) { m_IsTraining = false; return true; }
     bool IsTraining() const { return m_IsTraining; }
 
-    virtual bool MakeBestNeuralNetwork(NeuralNetwork& neuralNetwork) = 0;
+    virtual bool MakeBestNeuralNetwork(std::unique_ptr<NeuralNetwork>& neuralNetwork) = 0;
 
 private:
     bool m_IsTraining{ false };

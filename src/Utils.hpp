@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <queue>
 #include <random>
+#include <memory>
 
 #include <imgui.h>
 

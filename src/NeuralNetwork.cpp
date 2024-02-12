@@ -5,7 +5,7 @@
 namespace BrainFramework
 {
 
-NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, const std::vector<Neuron>& neurons)
+BasicNeuralNetwork::ValidateResult BasicNeuralNetwork::Validate(int inputs, int outputs, const std::vector<Neuron>& neurons)
 {
     const int neuronCount = static_cast<int>(neurons.size());
 
@@ -92,7 +92,7 @@ NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, c
     return ValidateResult::Valid;
 }
 
-bool NeuralNetwork::Make(int inputs, int outputs, std::vector<Neuron>&& neurons)
+bool BasicNeuralNetwork::Make(int inputs, int outputs, std::vector<Neuron>&& neurons)
 {
     if (Validate(inputs, outputs, neurons) == ValidateResult::Valid)
     {
@@ -104,7 +104,7 @@ bool NeuralNetwork::Make(int inputs, int outputs, std::vector<Neuron>&& neurons)
     return false;
 }
 
-bool NeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs)
+bool BasicNeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs)
 {
     if (inputs.size() != m_Inputs || outputs.size() != m_Outputs)
     {
@@ -142,6 +142,89 @@ bool NeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float
             sum += link.weight * m_Neurons[link.neuronIndex].value;
         }
         outputs[i - outputsStart] = Sigmoid(sum);
+    }
+
+    return true;
+}
+
+LayeredNeuralNetwork::ValidateResult LayeredNeuralNetwork::Validate(const std::vector<int>& layerSizes, const std::vector<float>& weights)
+{
+    // Format
+    if (layerSizes.size() < 2)
+        return ValidateResult::InvalidFormat;
+
+    // Weights
+    int expectedWeights = 0;
+    const int layers = static_cast<int>(layerSizes.size());
+    for (int i = 1; i < layers; ++i)
+    {
+        expectedWeights += (layerSizes[i - 1] * layerSizes[i]);
+    }
+    if (expectedWeights != static_cast<int>(weights.size()))
+        return ValidateResult::InvalidWeights;
+
+    return ValidateResult::Valid;
+}
+
+bool LayeredNeuralNetwork::Make(const std::vector<int>& layerSizes, const std::vector<float>& weights)
+{
+    if (Validate(layerSizes, weights) == ValidateResult::Valid)
+    {
+        m_LayerSizes = layerSizes;
+        m_Weights = weights;
+        m_Values.resize(GetNeuronsCount());
+        return true;
+    }
+    return false;
+}
+
+bool LayeredNeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float>& outputs)
+{
+    if (inputs.size() != GetInputsCount() || outputs.size() != GetOutputsCount())
+    {
+        return false;
+    }
+
+    // Fill inputs
+    int i = 0;
+    for (; i < m_LayerSizes[0]; ++i)
+    {
+        m_Values[i] = inputs[i];
+    }
+
+    // Propagate
+    int previousLayerWBeginIndex = 0;
+    int previousLayerVBeginIndex = 0;
+    const int intermediateLayers = static_cast<int>(m_LayerSizes.size() - 1);
+    for (int layer = 1; layer < intermediateLayers; ++layer)
+    {
+        for (int iOnLayer = 0; iOnLayer < m_LayerSizes[layer]; ++iOnLayer, ++i)
+        {
+            float sum = 0.0f;
+            for (int iOnPreviousLayer = 0; iOnPreviousLayer < m_LayerSizes[layer - 1]; ++iOnPreviousLayer)
+            {
+                const int wIndex = previousLayerWBeginIndex + iOnPreviousLayer + iOnLayer * iOnPreviousLayer;
+                const int vIndex = previousLayerVBeginIndex + iOnPreviousLayer;
+                sum += m_Weights[wIndex] * m_Values[vIndex];
+            }
+            m_Values[i] = Sigmoid(sum);
+        }
+        previousLayerWBeginIndex += m_LayerSizes[layer] * m_LayerSizes[layer - 1];
+        previousLayerVBeginIndex += m_LayerSizes[layer - 1];
+    }
+
+    // Read outputs
+    const int previousLayerIndex = static_cast<int>(m_LayerSizes.size() - 2);
+    for (int iOnLayer = 0; iOnLayer < m_LayerSizes.back(); ++iOnLayer, ++i)
+    {
+        float sum = 0.0f;
+        for (int iOnPreviousLayer = 0; iOnPreviousLayer < m_LayerSizes[previousLayerIndex]; ++iOnPreviousLayer)
+        {
+            const int wIndex = previousLayerWBeginIndex + iOnPreviousLayer + iOnLayer * iOnPreviousLayer;
+            const int vIndex = previousLayerVBeginIndex + iOnPreviousLayer;
+            sum += m_Weights[wIndex] * m_Values[vIndex];
+        }
+        outputs[iOnLayer] = Sigmoid(sum);
     }
 
     return true;
