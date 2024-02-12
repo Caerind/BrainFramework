@@ -10,7 +10,7 @@ NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, c
     const int neuronCount = static_cast<int>(neurons.size());
 
     // Format
-    if (inputs == 0 || outputs == 0 || neurons.empty() || inputs + outputs < neuronCount)
+    if (inputs == 0 || outputs == 0 || neurons.empty() || inputs + outputs > neuronCount)
         return ValidateResult::InvalidFormat;
 
     // Links
@@ -25,6 +25,7 @@ NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, c
         }
     }
 
+    /*
     // CyclicDependencies
     {
         std::vector<int> neuronDepths;
@@ -34,7 +35,7 @@ NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, c
         for (int i = 0; i < neuronCount; ++i)
         {
             const Neuron& neuron = neurons[i];
-            if (i < inputs)
+            if (i < inputs || neuron.links.empty())
             {
                 neuronDepths[i] = 0;
             }
@@ -86,6 +87,7 @@ NeuralNetwork::ValidateResult NeuralNetwork::Validate(int inputs, int outputs, c
             }
         }
     }
+    */
 
     return ValidateResult::Valid;
 }
@@ -97,6 +99,7 @@ bool NeuralNetwork::Make(int inputs, int outputs, std::vector<Neuron>&& neurons)
         m_Inputs = inputs;
         m_Outputs = outputs;
         m_Neurons = std::move(neurons);
+        return true;
     }
     return false;
 }
@@ -138,7 +141,7 @@ bool NeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vector<float
         {
             sum += link.weight * m_Neurons[link.neuronIndex].value;
         }
-        outputs[i] = Sigmoid(sum);
+        outputs[i - outputsStart] = Sigmoid(sum);
     }
 
     return true;

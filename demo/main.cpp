@@ -2,9 +2,11 @@
 
 #include <ctime>
 #include <memory>
+#include <iostream>
 
 #include "../src/BrainFramework.hpp"
 #include "NEAT.hpp"
+#include "NEET.hpp"
 #include "MoreOrLess.hpp"
 
 int main()
@@ -30,7 +32,12 @@ int main()
             {
                 if (ImGui::Button("NEAT"))
                 {
-                    modelPtr = std::make_unique<NEAT>();
+                    modelPtr = std::make_unique<NEAT::NEATModel>();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("NEET"))
+                {
+                    modelPtr = std::make_unique<NEET::NEETModel>();
                 }
             }
             else
@@ -81,15 +88,10 @@ int main()
                             isTraining = false;
                         }
 
-                        if (NEAT* neat = dynamic_cast<NEAT*>(modelPtr.get()))
-                        {
-                            ImGui::Text("NEAT:");
-                            ImGui::Indent();
-                            ImGui::Text("MaxScore: %f", neat->GetMaxScore());
-                            ImGui::Text("Generation: %d", neat->GetGeneration());
-                            ImGui::Text("Species: %d", neat->GetSpecies());
-                            ImGui::Unindent();
-                        }
+                        ImGui::Text("%s:", modelPtr->GetName());
+                        ImGui::Indent();
+                        modelPtr->DisplayImGui();
+                        ImGui::Unindent();
                     }
                 }
 
@@ -100,6 +102,9 @@ int main()
                         if (ImGui::Button("Play"))
                         {
                             isPlaying = true;
+
+                            modelPtr->MakeBestNeuralNetwork(neuralNetwork);
+                            simulationPtr->Initialize(neuralNetwork);
                         }
                     }
                     else
@@ -109,44 +114,25 @@ int main()
                             isPlaying = false;
                         }
 
-                        if (ImGui::Button("Step"))
+                        if (simulationPtr->GetResult() == BrainFramework::Simulation::Result::Ongoing || simulationPtr->GetResult() == BrainFramework::Simulation::Result::Initialized)
                         {
-                            if (simulationPtr->GetResult() == BrainFramework::Simulation::Result::None)
+                            if (ImGui::Button("Step"))
                             {
-                                modelPtr->MakeBestNeuralNetwork(neuralNetwork);
-                                simulationPtr->Initialize(neuralNetwork);
+                                simulationPtr->Step(neuralNetwork);
                             }
-
-                            simulationPtr->Step(neuralNetwork);
                         }
 
-                        if (MoreOrLess* moreOrLess = dynamic_cast<MoreOrLess*>(simulationPtr.get()))
+                        if (simulationPtr->GetResult() == BrainFramework::Simulation::Result::Finished || simulationPtr->GetResult() == BrainFramework::Simulation::Result::Failed)
                         {
-                            ImGui::Text("MoreOrLess:");
-                            ImGui::Indent();
-                            ImGui::Text("NumberToGuess: %d", moreOrLess->GetNumberToGuess());
-                            ImGui::Text("GuessCount: %d", moreOrLess->GetGuess());
-                            ImGui::Unindent();
-
-                            ImGui::Spacing();
+                            if (ImGui::Button("Stop"))
+                            {
+                                isPlaying = false;
+                            }
                         }
 
-                        ImGui::Text("Inputs:");
+                        ImGui::Text("%s:", simulationPtr->GetName());
                         ImGui::Indent();
-                        for (auto input : simulationPtr->GetInputs())
-                        {
-                            ImGui::Text("%f", input);
-                        }
-                        ImGui::Unindent();
-
-                        ImGui::Spacing();
-
-                        ImGui::Text("Outputs:");
-                        ImGui::Indent();
-                        for (auto output : simulationPtr->GetOutputs())
-                        {
-                            ImGui::Text("%f", output);
-                        }
+                        simulationPtr->DisplayImGui();
                         ImGui::Unindent();
                     }
                 }

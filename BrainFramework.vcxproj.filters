@@ -63,6 +63,9 @@
     <ClInclude Include="src\Model.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="demo\NEET.hpp">
+      <Filter>demo</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\Application.cpp">
@@ -94,9 +97,6 @@
     </ClCompile>
     <ClCompile Include="src\NeuralNetwork.cpp">
       <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="demo\NEAT.cpp">
-      <Filter>demo</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

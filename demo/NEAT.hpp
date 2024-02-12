@@ -2,6 +2,9 @@
 
 #include "../src/BrainFramework.hpp"
 
+namespace NEAT
+{
+
 class Gene
 {
 public:
@@ -78,6 +81,8 @@ public:
         m_Outputs = other.m_Outputs;
         m_MaxNeurons = other.m_MaxNeurons;
 
+        m_Genes.clear();
+        m_Genes.reserve(other.m_Genes.size());
         for (const Gene& gene : other.m_Genes)
         {
             m_Genes.push_back(gene);
@@ -101,16 +106,22 @@ public:
             return;
         }
 
+        assert(genome1.m_Inputs == genome2.m_Inputs);
+        assert(genome1.m_Outputs == genome2.m_Outputs);
+
         m_Inputs = genome1.m_Inputs;
         m_Outputs = genome1.m_Outputs;
         m_MaxNeurons = (genome1.m_MaxNeurons > genome2.m_MaxNeurons) ? genome1.m_MaxNeurons : genome2.m_MaxNeurons;
 
         std::unordered_map<int, Gene> innovations2;
+        innovations2.reserve(genome2.m_Genes.size());
         for (const Gene& gene : genome2.m_Genes)
         {
             innovations2[gene.GetInnovation()] = gene;
         }
 
+        m_Genes.clear();
+        m_Genes.reserve(genome1.m_Genes.size());
         for (const Gene& gene1 : genome1.m_Genes)
         {
             auto it = innovations2.find(gene1.GetInnovation());
@@ -183,11 +194,52 @@ public:
         }
     }
 
-    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const;
+    bool MakeNeuralNetwork(BrainFramework::NeuralNetwork& neuralNetwork) const
+    {
+        std::vector<BrainFramework::NeuralNetwork::Neuron> neurons;
+        neurons.reserve(m_MaxNeurons);
+
+        // Inputs
+        for (int i = 0; i < m_Inputs; ++i)
+            neurons.emplace_back();
+
+        // Middles
+        const int middleNeurons = m_MaxNeurons - m_Inputs - m_Outputs;
+        for (int i = 0; i < middleNeurons; ++i)
+            neurons.emplace_back();
+
+        // Outputs
+        for (int i = 0; i < m_Outputs; ++i)
+            neurons.emplace_back();
+
+        // Links from Genes
+        auto translateIndex = [&](int geneIndex)
+        {
+            if (geneIndex < m_Inputs)
+                return geneIndex;
+            else if (geneIndex < m_Inputs + m_Outputs)
+                return geneIndex + middleNeurons;
+            return geneIndex - m_Outputs;
+        };
+
+        for (const Gene& gene : m_Genes)
+        {
+            if (gene.IsEnabled() && gene.GetWeight() != 0.0f)
+            {
+                int geneIn = translateIndex(gene.GetIn());
+                int geneOut = translateIndex(gene.GetOut());
+
+                neurons[geneOut].links.emplace_back(geneIn, gene.GetWeight());
+            }
+        }
+
+        return neuralNetwork.Make(m_Inputs, m_Outputs, std::move(neurons));
+    }
 
     void UpdateGlobalRank(int globalRank) { m_GlobalRank = globalRank; }
     void SetScore(float score) { m_Score = score; }
 
+    static int GetInnovation() { return ms_Innovation; }
     static int GetNewInnovation() { return ms_Innovation++; }
     static void ResetInnovation() { ms_Innovation = 0; }
 
@@ -200,46 +252,6 @@ public:
     float GetScore() const { return m_Score; }
 
 private:
-    int RandomNeuron(bool nonInput)
-    {
-        std::unordered_map<int, bool> neurons;
-
-        if (!nonInput) 
-        {
-            for (int i = 0; i < m_Inputs; ++i)
-                neurons[i] = true;
-        }
-
-        for (int o = 0; o < m_Outputs; ++o)
-            neurons[m_Inputs + o] = true;
-
-        for (const auto& gene : m_Genes)
-        {
-            if ((!nonInput) || (gene.GetIn() > m_Inputs))
-                neurons[gene.GetIn()] = true;
-            if ((!nonInput) || (gene.GetOut() > m_Inputs))
-                neurons[gene.GetOut()] = true;
-        }
-
-        int n = BrainFramework::RandomIndex(neurons);
-        for (const auto& entry : neurons) 
-        {
-            n--;
-            if (n == 0)
-                return entry.first;
-        }
-
-        return 0;
-    }
-
-    bool ContainsLink(int in, int out)
-    {
-        for (const Gene& gene : m_Genes)
-            if (gene.GetIn() == in && gene.GetOut() == out)
-                return true;
-        return false;
-    }
-
     void PointMutate()
     {
         float step = m_MutationChances[Mutations::Step];
@@ -258,21 +270,49 @@ private:
 
     void LinkMutate(bool forceInputBias)
     {
-        int neuron1 = RandomNeuron(false);
-        int neuron2 = RandomNeuron(true);
-
-        if (neuron1 <= m_Inputs && neuron2 <= m_Inputs)
-            return;
-        if (neuron2 <= m_Inputs)
-            std::swap(neuron1, neuron2);
-
+        int neuron1 = 0;
         if (forceInputBias)
-            neuron1 = BrainFramework::RandomInt(0, m_Inputs);
+        {
+            // Inputs
+            neuron1 = BrainFramework::RandomInt(0, m_Inputs - 1);
+        }
+        else
+        {
+            // Any, except outputs, with the same proba
+            neuron1 = BrainFramework::RandomInt(0, m_MaxNeurons - m_Outputs - 1);
+            if (neuron1 >= m_Inputs)
+                neuron1 += m_Outputs;
+        }
 
-        if (ContainsLink(neuron1, neuron2))
-            return;
+        int neuron2 = 0;
+        // We want any outputs or greater than neuron1 but not an input
+        if (neuron1 < m_Inputs)
+        {
+            // In this case, any neurons not an input
+            neuron2 = BrainFramework::RandomInt(m_Inputs, m_MaxNeurons - 1);
+        }
+        else
+        {
+            // In this case, "add" the outputs at the end
+            neuron2 = BrainFramework::RandomInt(neuron1 + 1, m_MaxNeurons + m_Outputs - 1);
+            if (neuron2 >= m_MaxNeurons)
+            {
+                neuron2 -= m_MaxNeurons;
+                neuron2 += m_Inputs;
+            }
+        }
 
-        Gene& gene = m_Genes.emplace_back(neuron1, neuron2, BrainFramework::RandomFloat() * 4.0f - 2.0f, true, GetNewInnovation());
+        // Already existing skip
+        for (const Gene& gene : m_Genes)
+            if (gene.GetIn() == neuron1 && gene.GetOut() == neuron2)
+                return;
+
+        assert(neuron1 < m_MaxNeurons);
+        assert(neuron2 < m_MaxNeurons);
+        assert(neuron1 >= 0);
+        assert(neuron2 >= m_Inputs);
+
+        m_Genes.emplace_back(neuron1, neuron2, BrainFramework::RandomFloat() * 4.0f - 2.0f, true, GetNewInnovation());
     }
 
     void NodeMutate()
@@ -282,21 +322,24 @@ private:
 
         m_MaxNeurons++;
 
-        Gene& gene = m_Genes[BrainFramework::RandomIndex(m_Genes)];
-        if (!gene.IsEnabled())
-            return;
-        gene.SetEnabled(false);
+        const int initialGeneIndex = BrainFramework::RandomIndex(m_Genes);
+        {
+            Gene& initialGene = m_Genes[initialGeneIndex];
+            if (initialGene.IsEnabled())
+                return;
+            initialGene.SetEnabled(false);
+        }
 
         Gene& gene1 = m_Genes.emplace_back();
-        gene1.CopyFrom(gene);
-        gene1.SetOut(m_MaxNeurons);
+        gene1.CopyFrom(m_Genes[initialGeneIndex]); // Emplace_back might break previous reference
+        gene1.SetOut(m_MaxNeurons - 1);
         gene1.SetWeight(1.0f);
         gene1.SetInnovation(GetNewInnovation());
         gene1.SetEnabled(true);
 
         Gene& gene2 = m_Genes.emplace_back();
-        gene2.CopyFrom(gene);
-        gene2.SetIn(m_MaxNeurons);
+        gene2.CopyFrom(m_Genes[initialGeneIndex]); // Emplace_back might break previous reference
+        gene2.SetIn(m_MaxNeurons - 1);
         gene2.SetInnovation(GetNewInnovation());
         gene2.SetEnabled(true);
     }
@@ -357,18 +400,15 @@ public:
         return deltaDisjoint + deltaWeights < k_DeltaThreshold;
     }
 
-    void AddGenome(Genome&& genome)
-    {
-        m_Genomes.push_back(std::move(genome));
-    }
-
     void Update()
     {
         SortGenomes();
 
-        if (m_Genomes[0].GetScore() > m_TopScore)
+        const float previousScore = m_TopScore;
+        m_TopScore = m_Genomes[0].GetScore();
+
+        if (m_TopScore > previousScore)
         {
-            m_TopScore = m_Genomes[0].GetScore();
             m_Staleness = 0;
         }
         else
@@ -381,7 +421,7 @@ public:
     {
         SortGenomes();
 
-        const std::size_t remaining = cutToOne ? 1 : static_cast<std::size_t>(std::ceil(m_Genomes.size() / 2));
+        const std::size_t remaining = cutToOne ? 1 : static_cast<std::size_t>(std::ceil(m_Genomes.size() / 2.0f));
         m_Genomes.erase(m_Genomes.begin() + remaining, m_Genomes.end());
     }
 
@@ -488,14 +528,30 @@ private:
     int m_Staleness{ 0 };
 };
 
-class NEAT : public BrainFramework::Model
+class NEATModel : public BrainFramework::Model
 {
 public:
-    NEAT() = default;
-    NEAT(const NEAT&) = delete;
-    NEAT& operator=(const NEAT&) = delete;
+    NEATModel() = default;
+    NEATModel(const NEATModel&) = delete;
+    NEATModel& operator=(const NEATModel&) = delete;
 
     const char* GetName() const override { return "NEAT"; }
+
+    void DisplayImGui() override
+    {
+        ImGui::Text("MaxScore: %f", GetMaxScore());
+        ImGui::Text("Generation: %d", GetGeneration());
+        ImGui::Text("Species: %d", static_cast<int>(GetSpecies().size()));
+
+        int genomes = 0;
+        for (const Species& species : GetSpecies())
+        {
+            genomes += static_cast<int>(species.GetGenomes().size());
+        }
+        ImGui::Text("Genomes: %d", genomes);
+
+        ImGui::Text("Innovations: %d", Genome::GetInnovation());
+    }
 
     bool StartTraining(const BrainFramework::Simulation& simulation) override
     {
@@ -508,7 +564,7 @@ public:
                 Genome genome;
                 genome.Initialize(simulation.GetInputsCount(), simulation.GetOutputsCount());
                 genome.Mutate();
-                AddToSpecies(std::move(genome));
+                AddToSpecies(genome);
             }
         }
 
@@ -517,14 +573,17 @@ public:
         return Model::StartTraining(simulation);
     }
 
-    void Train(BrainFramework::Simulation& simulation) override
+    bool Train(BrainFramework::Simulation& simulation) override
     {
         Genome& genome = m_Species[m_CurrentSpecies].GetGenomes()[m_CurrentGenome];
 
         BrainFramework::NeuralNetwork neuralNetwork;
-        genome.MakeNeuralNetwork(neuralNetwork);
+        if (!genome.MakeNeuralNetwork(neuralNetwork))
+        {
+            return false;
+        }
 
-        if (simulation.GetResult() == BrainFramework::Simulation::Result::None)
+        if (simulation.GetResult() != BrainFramework::Simulation::Result::Initialized)
         {
             simulation.Initialize(neuralNetwork);
         }
@@ -537,6 +596,8 @@ public:
         } while (result == BrainFramework::Simulation::Result::Ongoing);
 
         NextGenome();
+
+        return true;
     }
 
     bool StopTraining(const BrainFramework::Simulation& simulation) override
@@ -595,25 +656,30 @@ public:
         }
     }
 
-    void AddToSpecies(Genome&& genome)
+    void AddToSpecies(const Genome& genome)
     {
         for (Species& species : m_Species)
         {
             if (species.SameSpecies(genome))
             {
-                species.AddGenome(std::move(genome));
+                species.GetGenomes().push_back(genome);
                 return;
             }
         }
         
         Species& species = m_Species.emplace_back();
-        species.AddGenome(std::move(genome));
+        species.GetGenomes().push_back(genome);
     }
 
     void NewGeneration()
     {
+        m_MaxScore = k_ResetMaxScore;
         for (Species& species : m_Species)
+        {
             species.Update();
+            if (species.GetTopScore() > m_MaxScore)
+                m_MaxScore = species.GetTopScore();
+        }
 
         // Cull the bottom half of each species
         for (Species& species : m_Species)
@@ -639,7 +705,7 @@ public:
         {
             const Species& species = m_Species[i];
             const int breedCount = static_cast<int>(std::floor(species.GetAverageFitness() / totalAverageFitness * k_Population));
-            if (breedCount <= 0)
+            if (breedCount <= 0 && m_Species.size() > 1)
             {
                 m_Species.erase(m_Species.begin() + i);
             }
@@ -676,7 +742,7 @@ public:
         // Add to the species
         for (Genome& genome : children)
         {
-            AddToSpecies(std::move(genome));
+            AddToSpecies(genome);
         }
 
         m_Generation++;
@@ -708,15 +774,18 @@ public:
 
     float GetMaxScore() const { return m_MaxScore; }
     int GetGeneration() const { return m_Generation; }
-    int GetSpecies() const { return static_cast<int>(m_Species.size()); }
+    const std::vector<Species>& GetSpecies() const { return m_Species; }
+
+    static constexpr int k_Population = 300;
+    static constexpr float k_ResetMaxScore = -100000.0f;
 
 private:
     Genome m_BestGenome;
     std::vector<Species> m_Species;
-    float m_MaxScore{ 0.0f };
+    float m_MaxScore{ k_ResetMaxScore };
     int m_Generation{ 0 };
     int m_CurrentSpecies{ 0 };
     int m_CurrentGenome{ 0 };
-
-    static constexpr int k_Population = 300;
 };
+
+} // namespace NEAT

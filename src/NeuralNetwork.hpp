@@ -10,9 +10,8 @@ class NeuralNetwork
 public:
     struct Link
     {
-        Link() = default;
-        Link(const Link&) = delete;
-        Link& operator=(const Link&) = delete;
+        Link(int _neuronIndex, float _weight) : neuronIndex(_neuronIndex), weight(_weight) {}
+        Link(const Link& other) : neuronIndex(other.neuronIndex), weight(other.weight) {}
 
         int neuronIndex{ -1 };
         float weight{ 0.0f };
@@ -21,8 +20,6 @@ public:
     struct Neuron
     {
         Neuron() = default;
-        Neuron(const Neuron&) = delete;
-        Neuron& operator=(const Neuron&) = delete;
 
         std::vector<Link> links;
         float value{ 0.0f };

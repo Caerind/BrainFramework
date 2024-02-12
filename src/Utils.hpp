@@ -9,6 +9,8 @@
 #include <queue>
 #include <random>
 
+#include <imgui.h>
+
 namespace BrainFramework
 {
 
@@ -20,12 +22,14 @@ inline float Sigmoid(float x)
     return 2.0f / (1.0f + std::exp(-4.9f * x)) - 1.0f;
 }
 
+// [min, max]
 inline float RandomFloat(float min = 0.0f, float max = 1.0f)
 {
     std::uniform_real_distribution<float> distribution(min, max);
     return distribution(gen);
 }
 
+// [min, max]
 inline int RandomInt(int min = 0, int max = 100)
 {
     std::uniform_int_distribution<int> distribution(min, max);
