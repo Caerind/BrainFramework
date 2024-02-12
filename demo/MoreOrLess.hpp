@@ -2,8 +2,6 @@
 
 #include "../src/BrainFramework.hpp"
 
-#include <iostream>
-
 class MoreOrLess : public BrainFramework::Simulation
 {
 public:

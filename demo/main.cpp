@@ -5,9 +5,12 @@
 #include <iostream>
 
 #include "../src/BrainFramework.hpp"
+
 #include "NEAT.hpp"
 #include "NEET.hpp"
+
 #include "MoreOrLess.hpp"
+#include "Blackjack.hpp"
 
 int main()
 {
@@ -52,6 +55,11 @@ int main()
                 if (ImGui::Button("MoreOrLess"))
                 {
                     simulationPtr = std::make_unique<MoreOrLess>();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Blackjack"))
+                {
+                    simulationPtr = std::make_unique<Blackjack>();
                 }
             }
             else

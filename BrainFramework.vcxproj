@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="demo\Application.hpp" />
+    <ClInclude Include="demo\Blackjack.hpp" />
     <ClInclude Include="demo\MoreOrLess.hpp" />
     <ClInclude Include="demo\NEAT.hpp" />
     <ClInclude Include="demo\NEET.hpp" />
