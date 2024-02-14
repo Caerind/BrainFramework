@@ -60,6 +60,7 @@ public:
 
     Genome()
     {
+        m_MutationChances.reserve(static_cast<std::size_t>(Mutations::COUNT));
         m_MutationChances[Mutations::Connections] = k_MutateConnectionsChance;
         m_MutationChances[Mutations::Links] = k_LinkMutationChance;
         m_MutationChances[Mutations::Bias] = k_BiasMutationChance;
@@ -96,7 +97,7 @@ public:
 
     void Crossover(const Genome& genome1, const Genome& genome2)
     {
-        // Make sure genome1 is the higher fitness genome
+        // Make sure genome1 is the higher genome
         if (genome2.m_Score > genome1.m_Score)
         {
             Crossover(genome2, genome1);
@@ -121,7 +122,7 @@ public:
 
             if (can1 && can2)
             {
-                can1 = BrainFramework::RandomInt(0, 1) == 0;
+                can1 = BrainFramework::RandomBool();
                 can2 = !can1;
             }
 
@@ -145,7 +146,7 @@ public:
         for (int i = 0; i < static_cast<int>(Mutations::COUNT); ++i)
         {
             const Mutations mut = static_cast<Mutations>(i);
-            m_MutationChances[mut] = (BrainFramework::RandomInt(0, 1) == 0) ? genome1.m_MutationChances.at(mut) : genome2.m_MutationChances.at(mut);
+            m_MutationChances[mut] = BrainFramework::RandomBool() ? genome1.m_MutationChances.at(mut) : genome2.m_MutationChances.at(mut);
         }
     }
 
@@ -159,7 +160,7 @@ public:
         m_Genes.reserve(m_Inputs * m_Outputs);
         for (int o = 0; o < m_Outputs; ++o)
             for (int i = 0; i < m_Inputs; ++i)
-                if (BrainFramework::RandomInt(0, 1) == 0)
+                if (BrainFramework::RandomBool())
                     m_Genes.emplace_back(i, o + m_Inputs, BrainFramework::RandomFloat() * 4.0f - 2.0f, true);
         */
     }
@@ -258,11 +259,11 @@ public:
         return neuralNetwork.Make(m_Inputs, m_Outputs, std::move(neurons));
     }
 
-    void EndSimulation(float score)
+    void EndBatch(float score)
     {
         m_Score = score;
         m_Lifetime++;
-        m_AverageScore = ((m_Lifetime - 1) * m_AverageScore + m_Score) / m_Lifetime;
+        m_AverageScore = ((m_Lifetime - 1) * m_AverageScore + score) / m_Lifetime;
     }
 
     const std::vector<Gene>& GetGenes() const { return m_Genes; }
@@ -461,7 +462,10 @@ public:
             return false;
         }
 
-        for (int i = 0; i < 10; ++i)
+        constexpr int batchSize = 10;
+        float scoreSum = 0.0f;
+
+        for (int i = 0; i < batchSize; ++i)
         {
             if (simulation.GetResult() != BrainFramework::Simulation::Result::Initialized)
             {
@@ -474,8 +478,10 @@ public:
                 result = simulation.Step(neuralNetwork);
             } while (result == BrainFramework::Simulation::Result::Ongoing);
 
-            genome.EndSimulation(simulation.GetScore());
+            scoreSum += simulation.GetScore();
         }
+
+        genome.EndBatch(scoreSum / batchSize);
 
         NextGenome();        
 

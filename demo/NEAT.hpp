@@ -58,11 +58,14 @@ public:
         Node,
         Enable,
         Disable,
-        Step
+        Step,
+
+        COUNT
     };
 
     Genome()
     {
+        m_MutationChances.reserve(static_cast<std::size_t>(Mutations::COUNT));
         m_MutationChances[Mutations::Connections] = k_MutateConnectionsChance;
         m_MutationChances[Mutations::Links] = k_LinkMutationChance;
         m_MutationChances[Mutations::Bias] = k_BiasMutationChance;

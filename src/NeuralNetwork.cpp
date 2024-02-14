@@ -193,8 +193,8 @@ bool LayeredNeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vecto
     }
 
     // Propagate
-    int previousLayerWBeginIndex = 0;
-    int previousLayerVBeginIndex = 0;
+    int previousLayerWeightBeginIndex = 0;
+    int previousLayerValueBeginIndex = 0;
     const int intermediateLayers = static_cast<int>(m_LayerSizes.size() - 1);
     for (int layer = 1; layer < intermediateLayers; ++layer)
     {
@@ -203,14 +203,14 @@ bool LayeredNeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vecto
             float sum = 0.0f;
             for (int iOnPreviousLayer = 0; iOnPreviousLayer < m_LayerSizes[layer - 1]; ++iOnPreviousLayer)
             {
-                const int wIndex = previousLayerWBeginIndex + iOnPreviousLayer + iOnLayer * iOnPreviousLayer;
-                const int vIndex = previousLayerVBeginIndex + iOnPreviousLayer;
-                sum += m_Weights[wIndex] * m_Values[vIndex];
+                const int weightIndex = previousLayerWeightBeginIndex + iOnPreviousLayer + iOnLayer * iOnPreviousLayer;
+                const int valueIndex = previousLayerValueBeginIndex + iOnPreviousLayer;
+                sum += m_Weights[weightIndex] * m_Values[valueIndex];
             }
             m_Values[i] = Sigmoid(sum);
         }
-        previousLayerWBeginIndex += m_LayerSizes[layer] * m_LayerSizes[layer - 1];
-        previousLayerVBeginIndex += m_LayerSizes[layer - 1];
+        previousLayerWeightBeginIndex += m_LayerSizes[layer] * m_LayerSizes[layer - 1];
+        previousLayerValueBeginIndex += m_LayerSizes[layer - 1];
     }
 
     // Read outputs
@@ -220,9 +220,9 @@ bool LayeredNeuralNetwork::Evaluate(const std::vector<float>& inputs, std::vecto
         float sum = 0.0f;
         for (int iOnPreviousLayer = 0; iOnPreviousLayer < m_LayerSizes[previousLayerIndex]; ++iOnPreviousLayer)
         {
-            const int wIndex = previousLayerWBeginIndex + iOnPreviousLayer + iOnLayer * iOnPreviousLayer;
-            const int vIndex = previousLayerVBeginIndex + iOnPreviousLayer;
-            sum += m_Weights[wIndex] * m_Values[vIndex];
+            const int weightIndex = previousLayerWeightBeginIndex + iOnPreviousLayer + iOnLayer * iOnPreviousLayer;
+            const int valueIndex = previousLayerValueBeginIndex + iOnPreviousLayer;
+            sum += m_Weights[weightIndex] * m_Values[valueIndex];
         }
         outputs[iOnLayer] = Sigmoid(sum);
     }

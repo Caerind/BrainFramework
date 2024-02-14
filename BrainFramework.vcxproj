@@ -24,6 +24,7 @@
     <ClInclude Include="demo\MoreOrLess.hpp" />
     <ClInclude Include="demo\NEAT.hpp" />
     <ClInclude Include="demo\NEET.hpp" />
+    <ClInclude Include="demo\NEETL.hpp" />
     <ClInclude Include="ext\imgui\imconfig.h" />
     <ClInclude Include="ext\imgui\imgui.h" />
     <ClInclude Include="ext\imgui\imgui_impl_dx11.h" />

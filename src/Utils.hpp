@@ -37,6 +37,12 @@ inline int RandomInt(int min = 0, int max = 100)
     return distribution(gen);
 }
 
+inline bool RandomBool()
+{
+    std::uniform_int_distribution<int> distribution(0, 1);
+    return distribution(gen) == 0;
+}
+
 template <typename T>
 inline int RandomIndex(const T& container)
 {
