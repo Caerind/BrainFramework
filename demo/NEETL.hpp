@@ -225,7 +225,28 @@ namespace NEET
                     const int nextLayerSize = m_LayerSizes[newLayerIndex];
                     const int newLayerSize = BrainFramework::RandomInt(std::min(previousLayerSize, nextLayerSize), std::max(previousLayerSize, nextLayerSize));
                     m_LayerSizes.insert(m_LayerSizes.begin() + newLayerIndex, newLayerSize);
-                    // TODO
+
+                    int weightBeginIndex = 0;
+                    for (int i = 1; i < newLayerIndex; ++i)
+                        weightBeginIndex += (m_LayerSizes[i] * m_LayerSizes[i - 1]);
+
+                    const int previousLayerConnections = previousLayerSize * nextLayerSize;
+                    const int newLayerConnectionsBothSides = previousLayerSize * newLayerSize + newLayerSize * nextLayerSize;
+                    
+                    const auto begin = m_Weights.begin() + weightBeginIndex;
+                    if (newLayerConnectionsBothSides > previousLayerConnections)
+                    {
+                        const int delta = newLayerConnectionsBothSides - previousLayerConnections;
+                        m_Weights.insert(begin + previousLayerConnections, delta);
+                    }
+                    else
+                    {
+                        m_Weights.erase(begin, begin + previousLayerConnections);
+                        m_Weights.insert(begin, newLayerConnectionsBothSides, 1.0f);
+                    }
+
+                    for (int i = 0; i < newLayerConnectionsBothSides; ++i)
+                        m_Weights[weightBeginIndex + i] = BrainFramework::RandomFloat() * 4.0f - 2.0f;
                 }
                 p -= 1.0f;
             }
