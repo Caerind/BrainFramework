@@ -556,7 +556,7 @@ public:
         ImGui::Text("Innovations: %d", Genome::GetInnovation());
     }
 
-    bool StartTraining(const BrainFramework::Simulation& simulation) override
+    bool PrepareTraining(const BrainFramework::ISimulation& simulation) override
     {
         if (m_Species.empty())
         {
@@ -565,7 +565,7 @@ public:
             for (int i = 0; i < k_Population; ++i)
             {
                 Genome genome;
-                genome.Initialize(simulation.GetInputsCount(), simulation.GetOutputsCount());
+                genome.Initialize(simulation.GetRLInputsCount(), simulation.GetRLOutputsCount());
                 genome.Mutate();
                 AddToSpecies(genome);
             }
@@ -573,10 +573,10 @@ public:
 
         m_CurrentSpecies = 0;
         m_CurrentGenome = 0;
-        return Model::StartTraining(simulation);
+        return Model::PrepareTraining(simulation);
     }
 
-    bool Train(BrainFramework::Simulation& simulation) override
+    bool Train(BrainFramework::ISimulation& simulation) override
     {
         Genome& genome = m_Species[m_CurrentSpecies].GetGenomes()[m_CurrentGenome];
 
@@ -586,55 +586,25 @@ public:
             return false;
         }
 
-        if (simulation.GetResult() != BrainFramework::Simulation::Result::Initialized)
-        {
-            simulation.Initialize(neuralNetwork);
-        }
+        BrainFramework::AgentInterface* agent = simulation.CreateRLAgent(neuralNetwork);
 
-        auto result = BrainFramework::Simulation::Result::Initialized;
+        agent->Initialize();
+        auto result = BrainFramework::AgentInterface::Result::Initialized;
         do 
         {
-            result = simulation.Step(neuralNetwork);
-            genome.SetScore(simulation.GetScore());
-        } while (result == BrainFramework::Simulation::Result::Ongoing);
+            result = agent->Step();
+            genome.SetScore(agent->GetScore());
+        } while (result == BrainFramework::AgentInterface::Result::Ongoing);
+
+        simulation.RemoveAgent(agent);
 
         NextGenome();
 
         return true;
     }
 
-    bool StopTraining(const BrainFramework::Simulation& simulation) override
-    {
-        const Genome* bestGenome = nullptr;
-        for (const Species& species : m_Species)
-        {
-            for (const Genome& genome : species.GetGenomes())
-            {
-                if (bestGenome == nullptr || genome.GetScore() > bestGenome->GetScore())
-                {
-                    bestGenome = &genome;
-                }
-            }
-        }
-
-        Model::StopTraining(simulation);
-        
-        if (bestGenome != nullptr)
-        {
-            m_BestGenome.CopyFrom(*bestGenome);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
     bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
     {
-        if (IsTraining())
-            return false;
-        
         std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
         const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
 
@@ -771,6 +741,8 @@ public:
         std::sort(allGenomes.begin(), allGenomes.end(), [](const Genome* a, const Genome* b) {
             return a->GetScore() < b->GetScore();
         });
+
+        m_BestGenome.CopyFrom(*allGenomes[0]);
 
         // Ranks are inverted to be used for Fitness computation
         const int allGenomesCount = static_cast<int>(allGenomes.size());

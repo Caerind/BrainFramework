@@ -1,75 +1,32 @@
 #pragma once
 
 #include "../src/BrainFramework.hpp"
+#include <string>
 
-class MoreOrLess : public BrainFramework::Simulation
+class MoreOrLess;
+
+class MoreOrLessBaseAgent : public BrainFramework::AgentInterface
 {
 public:
-    static constexpr int k_Inputs = 20;
-    static constexpr int k_Outputs = 1;
-
-    MoreOrLess() = default;
-    MoreOrLess(const MoreOrLess&) = delete;
-    MoreOrLess& operator=(const MoreOrLess&) = delete;
-
-    void DisplayImGui() override
+    MoreOrLessBaseAgent(MoreOrLess& moreOrLess)
+        : m_MoreOrLess(moreOrLess)
     {
-        ImGui::Text("NumberToGuess: %d", GetNumberToGuess());
-        ImGui::Text("GuessCount: %d", GetGuess());
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        ImGui::Text("Inputs:");
-        ImGui::Indent();
-        for (auto input : GetInputs())
-        {
-            ImGui::Text("%f", input);
-        }
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        ImGui::Text("Outputs:");
-        ImGui::Indent();
-        for (auto output : GetOutputs())
-        {
-            ImGui::Text("%f", output);
-        }
     }
 
-    bool Initialize(BrainFramework::NeuralNetwork& neuralNetwork) override
+    void Initialize() override 
     {
-        m_Inputs.resize(k_Inputs);
-        for (int i = 0; i < k_Inputs; ++i)
-        {
-            if (i % 2 == 0)
-            {
-                m_Inputs[i] = -1.0f;
-            }
-            else
-            {
-                m_Inputs[i] = 0.0f;
-            }
-        }
-        m_Outputs.resize(k_Outputs);
-        m_Outputs[0] = 0.0f;
-
-        m_NumberToGuess = std::rand() % (100 + 1); // [0,100]
+        m_NumberToGuess = m_MoreOrLess.GetNumberToGuess();
         m_Guess = 0;
-
-        return Simulation::Initialize(neuralNetwork);
     }
 
-    Result Step(BrainFramework::NeuralNetwork& neuralNetwork) override
+    Result Step() override
     {
         if (m_Guess < 10)
         {
-            const bool result = neuralNetwork.Evaluate(m_Inputs, m_Outputs);
-            if (!result)
+            if (!Evaluate())
                 return MarkResult(Result::Failed);
 
-            int numberGuessed = static_cast<int>(std::round(m_Outputs[0] * 100.0f));
+            int numberGuessed = GetGuessedNumber();
 
             if (numberGuessed < 0 || numberGuessed > 100)
             {
@@ -87,21 +44,21 @@ public:
             }
             else
             {
-                int index = m_Guess * 2;
-                m_Inputs[index] = static_cast<float>(numberGuessed);
-                m_Inputs[index + 1] = numberGuessed > m_NumberToGuess ? -1.0f : 1.0f;
+                const float hint = numberGuessed > m_NumberToGuess ? -1.0f : 1.0f;
 
-                if (index > 0)
+                AddFeedback(m_Guess, numberGuessed, hint);
+
+                if (m_Guess > 0)
                 {
-                    int previousNumber = static_cast<int>(m_Inputs[index - 2]);
-                    float previousHint = m_Inputs[index - 1];
-                    if ((previousHint > 0.0f && numberGuessed > previousNumber) || (previousHint < 0.0f && numberGuessed < previousNumber))
+                    if ((m_PreviousHint > 0.0f && numberGuessed > m_PreviousGuessed) || (m_PreviousHint < 0.0f && numberGuessed < m_PreviousGuessed))
                     {
                         AddReward(1.0f);
                     }
                 }
 
                 m_Guess++;
+                m_PreviousGuessed = numberGuessed;
+                m_PreviousHint = hint;
             }
         }
 
@@ -114,21 +71,88 @@ public:
         return MarkResult(Result::Ongoing);
     }
 
-    int GetInputsCount() const override { return k_Inputs; }
-    int GetOutputsCount() const override { return k_Outputs; }
+    virtual bool Evaluate() = 0;
+    virtual int GetGuessedNumber() const = 0;
+    virtual void AddFeedback(int guessCount, int numberGuessed, float hint) = 0;
 
-    const std::vector<float>& GetInputs() const { return m_Inputs; }
-    const std::vector<float>& GetOutputs() const { return m_Outputs; }
+private:
+    MoreOrLess& m_MoreOrLess;
+protected:
+    int m_NumberToGuess{ 0 };
+    int m_Guess{ 0 };
+    int m_PreviousGuessed{ -1 };
+    float m_PreviousHint{ 0.0f };
+};
+
+class MoreOrLessRLAgent : public MoreOrLessBaseAgent
+{
+public:
+    static constexpr int k_Inputs = 20;
+    static constexpr int k_Outputs = 1;
+
+    MoreOrLessRLAgent(MoreOrLess& moreOrLess, BrainFramework::NeuralNetwork& neuralNetwork)
+        : MoreOrLessBaseAgent(moreOrLess)
+        , m_NeuralNetwork(neuralNetwork)
+    {
+        m_Inputs.resize(k_Inputs);
+        for (int i = 0; i < k_Inputs; ++i)
+        {
+            if (i % 2 == 0)
+            {
+                m_Inputs[i] = -1.0f;
+            }
+            else
+            {
+                m_Inputs[i] = 0.0f;
+            }
+        }
+        m_Outputs.resize(k_Outputs);
+        m_Outputs[0] = 0.0f;
+    }
+
+    MoreOrLessRLAgent(const MoreOrLessRLAgent&) = delete;
+    MoreOrLessRLAgent& operator=(const MoreOrLessRLAgent&) = delete;
+
+    bool Evaluate() override
+    {
+        return m_NeuralNetwork.Evaluate(m_Inputs, m_Outputs);
+    }
+
+    int GetGuessedNumber() const override { static_cast<int>(std::round(m_Outputs[0] * 100.0f)); }
+
+    void AddFeedback(int guessCount, int numberGuessed, float hint) override
+    {
+        const int index = guessCount * 2;
+        m_Inputs[index] = static_cast<float>(numberGuessed);
+        m_Inputs[index + 1] = hint;
+    }
+
+private:
+    BrainFramework::NeuralNetwork& m_NeuralNetwork;
+    std::vector<float> m_Inputs;
+    std::vector<float> m_Outputs;
+};
+
+class MoreOrLess : public BrainFramework::Simulation<MoreOrLessBaseAgent>
+{
+public:
+    MoreOrLess() = default;
+    MoreOrLess(const MoreOrLess&) = delete;
+    MoreOrLess& operator=(const MoreOrLess&) = delete;
+
+    int GetNumberToGuess() const
+    {
+        return std::rand() % (100 + 1); // [0,100]
+    }
 
     const char* GetName() const override { return "MoreOrLess"; }
 
-    int GetNumberToGuess() const { return m_NumberToGuess; }
-    int GetGuess() const { return m_Guess; }
+    BrainFramework::AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
+    {
+        m_Agents.emplace_back(std::make_unique<MoreOrLessRLAgent>(*this, neuralNetwork));
+        return m_Agents.back().get();
+    }
 
-private:
-    std::vector<float> m_Inputs;
-    std::vector<float> m_Outputs;
-
-    int m_NumberToGuess{ 0 };
-    int m_Guess{ 0 };
+    int GetRLInputsCount() const override { return MoreOrLessRLAgent::k_Inputs; }
+    int GetRLOutputsCount() const override { return MoreOrLessRLAgent::k_Outputs; }
 };

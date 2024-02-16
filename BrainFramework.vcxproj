@@ -33,6 +33,7 @@
     <ClInclude Include="ext\imgui\imstb_rectpack.h" />
     <ClInclude Include="ext\imgui\imstb_textedit.h" />
     <ClInclude Include="ext\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\AgentInterface.hpp" />
     <ClInclude Include="src\BrainFramework.hpp" />
     <ClInclude Include="src\Model.hpp" />
     <ClInclude Include="src\NeuralNetwork.hpp" />

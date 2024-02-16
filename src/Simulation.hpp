@@ -1,46 +1,57 @@
 #pragma once
 
 #include "NeuralNetwork.hpp"
+#include "AgentInterface.hpp"
 
 namespace BrainFramework
 {
 
-class Simulation
+class ISimulation
 {
 public:
-    enum class Result
-    {
-        None,
-        Initialized,
-        Finished,
-        Failed,
-        Ongoing
-    };
+    ISimulation() = default;
+    ISimulation(const ISimulation&) = delete;
+    ISimulation& operator=(const ISimulation&) = delete;
 
+    virtual const char* GetName() const = 0;
+
+    virtual AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) = 0;
+    virtual void RemoveAgent(AgentInterface* agent) = 0;
+    virtual int GetRLInputsCount() const = 0;
+    virtual int GetRLOutputsCount() const = 0;
+};
+
+template <typename BaseAgentType>
+class Simulation : public ISimulation
+{
+public:
     Simulation() = default;
     Simulation(const Simulation&) = delete;
     Simulation& operator=(const Simulation&) = delete;
 
-    virtual void DisplayImGui() {};
+    AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
+    {
+        return nullptr;
+    }
 
-    virtual bool Initialize(NeuralNetwork& neuralNetwork) { m_Score = 0.0f; m_Result = Result::Initialized; return true; };
-    virtual Result Step(NeuralNetwork& neuralNetwork) = 0;
+    void RemoveAgent(AgentInterface* agent) override
+    {
+        m_Agents.erase(
+            std::remove_if(m_Agents.begin(), m_Agents.end(),
+                [agent](const std::unique_ptr<BaseAgentType*>& ptr)
+                {
+                    return *ptr == agent;
+                }
+            ),
+            m_Agents.end()
+        );
+    }
 
-    virtual int GetInputsCount() const = 0;
-    virtual int GetOutputsCount() const = 0;
-
-    virtual const char* GetName() const = 0;
-
-    float GetScore() const { return m_Score; }
-    Result GetResult() const { return m_Result; }
+    int GetRLInputsCount() const override { return 0; }
+    int GetRLOutputsCount() const override { return 0; }
 
 protected:
-    void AddReward(float reward) { m_Score += reward; }
-    Result MarkResult(Result result) { m_Result = result; return result; }
-
-private:
-    float m_Score{ 0.0f };
-    Result m_Result{ Result::None };
+    std::vector<std::unique_ptr<BaseAgentType>> m_Agents;
 };
 
 } // namespace BrainFramework

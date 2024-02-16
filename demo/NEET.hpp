@@ -436,23 +436,23 @@ public:
         ImGui::Unindent();
     }
 
-    bool StartTraining(const BrainFramework::Simulation& simulation) override
+    bool PrepareTraining(const BrainFramework::ISimulation& simulation) override
     {
         if (m_Genomes.empty())
         {
             for (int i = 0; i < k_Population; ++i)
             {
                 Genome& genome = m_Genomes.emplace_back();
-                genome.Initialize(simulation.GetInputsCount(), simulation.GetOutputsCount());
+                genome.Initialize(simulation.GetRLInputsCount(), simulation.GetRLOutputsCount());
                 genome.Mutate();
             }
         }
 
         m_CurrentGenome = 0;
-        return Model::StartTraining(simulation);
+        return Model::PrepareTraining(simulation);
     }
 
-    bool Train(BrainFramework::Simulation& simulation) override
+    bool Train(BrainFramework::ISimulation& simulation) override
     {
         Genome& genome = m_Genomes[m_CurrentGenome];
 
@@ -462,24 +462,24 @@ public:
             return false;
         }
 
+        BrainFramework::AgentInterface* agent = simulation.CreateRLAgent(neuralNetwork);
+
         constexpr int batchSize = 10;
         float scoreSum = 0.0f;
 
         for (int i = 0; i < batchSize; ++i)
         {
-            if (simulation.GetResult() != BrainFramework::Simulation::Result::Initialized)
-            {
-                simulation.Initialize(neuralNetwork);
-            }
-
-            auto result = BrainFramework::Simulation::Result::Initialized;
+            agent->Initialize();
+            auto result = BrainFramework::AgentInterface::Result::Initialized;
             do
             {
-                result = simulation.Step(neuralNetwork);
-            } while (result == BrainFramework::Simulation::Result::Ongoing);
+                result = agent->Step();
+            } while (result == BrainFramework::AgentInterface::Result::Ongoing);
 
-            scoreSum += simulation.GetScore();
+            scoreSum += agent->GetScore();
         }
+
+        simulation.RemoveAgent(agent);
 
         genome.EndBatch(scoreSum / batchSize);
 
@@ -488,17 +488,8 @@ public:
         return true;
     }
 
-    bool StopTraining(const BrainFramework::Simulation& simulation) override
-    {
-        Model::StopTraining(simulation);
-        return true;
-    }
-
     bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
     {
-        if (IsTraining())
-            return false;
-
         std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
         const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
 

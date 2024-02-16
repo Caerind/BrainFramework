@@ -2,7 +2,7 @@
 
 #include "../src/BrainFramework.hpp"
 
-namespace NEET
+namespace NEETL
 {
 
     class Genome
@@ -204,7 +204,6 @@ namespace NEET
 
                     // Remove links from previous layer
                     // TODO : Reverse order to optimize remove operations a bit
-                    const int previousLayerNeurons = m_LayerSizes[layerIndex - 1];
                     for (int i = 0; i < previousLayerNeurons; ++i)
                     {
                         const int index = weightBeginIndex + oldLayerSize * (i + 1) - 1 - i;
@@ -223,7 +222,9 @@ namespace NEET
                     const int newLayerIndex = BrainFramework::RandomInt(1, static_cast<int>(m_LayerSizes.size() - 1));
                     const int previousLayerSize = m_LayerSizes[newLayerIndex - 1];
                     const int nextLayerSize = m_LayerSizes[newLayerIndex];
-                    const int newLayerSize = BrainFramework::RandomInt(std::min(previousLayerSize, nextLayerSize), std::max(previousLayerSize, nextLayerSize));
+                    const int min = previousLayerSize < nextLayerSize ? previousLayerSize : nextLayerSize;
+                    const int max = previousLayerSize > nextLayerSize ? previousLayerSize : nextLayerSize;
+                    const int newLayerSize = BrainFramework::RandomInt(min, max);
                     m_LayerSizes.insert(m_LayerSizes.begin() + newLayerIndex, newLayerSize);
 
                     int weightBeginIndex = 0;
@@ -237,10 +238,11 @@ namespace NEET
                     if (newLayerConnectionsBothSides > previousLayerConnections)
                     {
                         const int delta = newLayerConnectionsBothSides - previousLayerConnections;
-                        m_Weights.insert(begin + previousLayerConnections, delta);
+                        m_Weights.insert(begin + previousLayerConnections, delta, 1.0f);
                     }
                     else
                     {
+                        // TODO: Only erase ?
                         m_Weights.erase(begin, begin + previousLayerConnections);
                         m_Weights.insert(begin, newLayerConnectionsBothSides, 1.0f);
                     }
@@ -305,14 +307,14 @@ namespace NEET
         static inline int ms_Innovation = 0;
     };
 
-    class NEETModel : public BrainFramework::Model
+    class NEETLModel : public BrainFramework::Model
     {
     public:
-        NEETModel() = default;
-        NEETModel(const NEETModel&) = delete;
-        NEETModel& operator=(const NEETModel&) = delete;
+        NEETLModel() = default;
+        NEETLModel(const NEETLModel&) = delete;
+        NEETLModel& operator=(const NEETLModel&) = delete;
 
-        const char* GetName() const override { return "NEET"; }
+        const char* GetName() const override { return "NEETLModel"; }
 
         void DisplayImGui() override
         {
@@ -334,23 +336,23 @@ namespace NEET
             ImGui::Unindent();
         }
 
-        bool StartTraining(const BrainFramework::Simulation& simulation) override
+        bool PrepareTraining(const BrainFramework::ISimulation& simulation) override
         {
             if (m_Genomes.empty())
             {
                 for (int i = 0; i < k_Population; ++i)
                 {
                     Genome& genome = m_Genomes.emplace_back();
-                    genome.Initialize(simulation.GetInputsCount(), simulation.GetOutputsCount());
+                    genome.Initialize(simulation.GetRLInputsCount(), simulation.GetRLOutputsCount());
                     genome.Mutate();
                 }
             }
 
             m_CurrentGenome = 0;
-            return Model::StartTraining(simulation);
+            return Model::PrepareTraining(simulation);
         }
 
-        bool Train(BrainFramework::Simulation& simulation) override
+        bool Train(BrainFramework::ISimulation& simulation) override
         {
             Genome& genome = m_Genomes[m_CurrentGenome];
 
@@ -360,24 +362,24 @@ namespace NEET
                 return false;
             }
 
+            BrainFramework::AgentInterface* agent = simulation.CreateRLAgent(neuralNetwork);
+
             constexpr int batchSize = 10;
             float scoreSum = 0.0f;
 
             for (int i = 0; i < batchSize; ++i)
             {
-                if (simulation.GetResult() != BrainFramework::Simulation::Result::Initialized)
-                {
-                    simulation.Initialize(neuralNetwork);
-                }
-
-                auto result = BrainFramework::Simulation::Result::Initialized;
+                agent->Initialize();
+                auto result = BrainFramework::AgentInterface::Result::Initialized;
                 do
                 {
-                    result = simulation.Step(neuralNetwork);
-                } while (result == BrainFramework::Simulation::Result::Ongoing);
+                    result = agent->Step();
+                } while (result == BrainFramework::AgentInterface::Result::Ongoing);
 
-                scoreSum += simulation.GetScore();
+                scoreSum += agent->GetScore();
             }
+
+            simulation.RemoveAgent(agent);
 
             genome.EndBatch(scoreSum / batchSize);
 
@@ -386,17 +388,8 @@ namespace NEET
             return true;
         }
 
-        bool StopTraining(const BrainFramework::Simulation& simulation) override
-        {
-            Model::StopTraining(simulation);
-            return true;
-        }
-
         bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
         {
-            if (IsTraining())
-                return false;
-
             std::unique_ptr<BrainFramework::LayeredNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::LayeredNeuralNetwork>();
             const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
 
@@ -513,4 +506,4 @@ namespace NEET
         std::vector<float> m_AverageScoreArray;
     };
 
-} // namespace NEET
+} // namespace NEETL

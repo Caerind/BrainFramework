@@ -1,65 +1,20 @@
 #pragma once
 
 #include "../src/BrainFramework.hpp"
+#include <string>
 
-class Blackjack : public BrainFramework::Simulation
+class Blackjack;
+
+class BlackjackBaseAgent : public BrainFramework::AgentInterface
 {
 public:
-    static constexpr int k_Inputs = 10;
-    static constexpr int k_Outputs = 1;
-
-    Blackjack() = default;
-    Blackjack(const Blackjack&) = delete;
-    Blackjack& operator=(const Blackjack&) = delete;
-
-    void DisplayImGui() override
+    BlackjackBaseAgent(Blackjack& blackjack)
+        : m_Blackjack(blackjack)
     {
-        ImGui::Text("Hand: %d", m_Hand);
-        ImGui::Text("Cards: %d", m_Cards);
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        ImGui::Text("Inputs:");
-        ImGui::Indent();
-        for (auto input : GetInputs())
-        {
-            ImGui::Text("%f", input);
-        }
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        ImGui::Text("Outputs:");
-        ImGui::Indent();
-        for (auto output : GetOutputs())
-        {
-            ImGui::Text("%f", output);
-        }
     }
 
-    bool Initialize(BrainFramework::NeuralNetwork& neuralNetwork) override
-    {
-        m_Inputs.resize(k_Inputs);
-        for (int i = 0; i < k_Inputs; ++i)
-        {
-            m_Inputs[i] = 0.0f;
-        }
-        m_Outputs.resize(k_Outputs);
-        m_Outputs[0] = 0.0f;
-
-        int c1 = PickCard();
-        int c2 = PickCard();
-        m_Inputs[0] = static_cast<float>(c1);
-        m_Inputs[1] = static_cast<float>(c2);
-
-        m_Hand = c1 + c2;
-        m_Cards = 2;
-
-        return Simulation::Initialize(neuralNetwork);
-    }
-
-    Result Step(BrainFramework::NeuralNetwork& neuralNetwork) override
+    void Initialize() override { m_Hand = 0; m_Cards = 0; }
+    Result Step() override
     {
         if (m_Hand > 21)
         {
@@ -67,22 +22,15 @@ public:
             return MarkResult(Result::Finished);
         }
 
-        const bool result = neuralNetwork.Evaluate(m_Inputs, m_Outputs);
-        if (!result)
+        if (!Evaluate())
             return MarkResult(Result::Failed);
 
-        if (m_Outputs[0] > 0.0f)
+        if (TakeCard())
         {
-            int card = PickCard();
-            m_Inputs[m_Cards] = static_cast<float>(card);
+            int card = m_Blackjack.PickCard();
+            AddCard(card);
             m_Hand += card;
             m_Cards++;
-
-            if (m_Cards >= k_Inputs)
-            {
-                AddReward(1.0f);
-                return MarkResult(Result::Finished);
-            }
 
             if (m_Hand > 21)
             {
@@ -108,22 +56,75 @@ public:
         return MarkResult(Result::Ongoing);
     }
 
+    virtual bool Evaluate() = 0;
+    virtual void AddCard(int card) { m_Hand += card; m_Cards++; }
+    virtual bool TakeCard() = 0;
+
+    int GetHand() const { return m_Hand; }
+    int GetCardsCount() const { return m_Cards; }
+
+private:
+    Blackjack& m_Blackjack;
+protected:
+    int m_Hand{ 0 };
+    int m_Cards{ 0 };
+};
+
+class BlackjackRLAgent : public BlackjackBaseAgent
+{
+public:
+    static constexpr int k_Inputs = 20;
+    static constexpr int k_Outputs = 1;
+
+    BlackjackRLAgent(Blackjack& blackjack, BrainFramework::NeuralNetwork& neuralNetwork)
+        : BlackjackBaseAgent(blackjack)
+        , m_NeuralNetwork(neuralNetwork)
+    {
+        m_Inputs.resize(k_Inputs);
+        for (int i = 0; i < k_Inputs; ++i)
+        {
+            m_Inputs[i] = 0.0f;
+        }
+        m_Outputs.resize(k_Outputs);
+        m_Outputs[0] = 0.0f;
+        m_Cards = 0;
+    }
+
+    void AddCard(int card) override
+    {
+        m_Inputs[m_Cards] = static_cast<float>(card);
+        m_Cards++;
+    }
+
+    bool TakeCard() override { return m_Outputs[0] >= 0.0f; }
+
+private:
+    BrainFramework::NeuralNetwork& m_NeuralNetwork;
+    std::vector<float> m_Inputs;
+    std::vector<float> m_Outputs;
+    int m_Cards{ 0 };
+};
+
+class Blackjack : public BrainFramework::Simulation<BlackjackBaseAgent>
+{
+public:
+    Blackjack() = default;
+    Blackjack(const Blackjack&) = delete;
+    Blackjack& operator=(const Blackjack&) = delete;
+
     int PickCard()
     {
         return rand() % 11 + 1;
     }
 
-    int GetInputsCount() const override { return k_Inputs; }
-    int GetOutputsCount() const override { return k_Outputs; }
-
-    const std::vector<float>& GetInputs() const { return m_Inputs; }
-    const std::vector<float>& GetOutputs() const { return m_Outputs; }
-
     const char* GetName() const override { return "Blackjack"; }
 
-private:
-    std::vector<float> m_Inputs;
-    std::vector<float> m_Outputs;
-    int m_Hand{ 0 };
-    int m_Cards{ 0 };
+    BrainFramework::AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
+    {
+        m_Agents.emplace_back(std::make_unique<BlackjackRLAgent>(*this, neuralNetwork));
+        return m_Agents.back().get();
+    }
+
+    int GetRLInputsCount() const override { return BlackjackRLAgent::k_Inputs; }
+    int GetRLOutputsCount() const override { return BlackjackRLAgent::k_Outputs; }
 };
