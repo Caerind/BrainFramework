@@ -13,48 +13,8 @@ public:
     {
     }
 
-    void Initialize() override { m_Hand = 0; m_Cards = 0; }
-    Result Step() override
-    {
-        if (m_Hand > 21)
-        {
-            AddReward(-10.0f);
-            return MarkResult(Result::Finished);
-        }
-
-        if (!Evaluate())
-            return MarkResult(Result::Failed);
-
-        if (TakeCard())
-        {
-            int card = m_Blackjack.PickCard();
-            AddCard(card);
-            m_Hand += card;
-            m_Cards++;
-
-            if (m_Hand > 21)
-            {
-                AddReward(-10.0f);
-                return MarkResult(Result::Finished);
-            }
-            else if (m_Hand == 21)
-            {
-                AddReward(10.0f);
-                return MarkResult(Result::Finished);
-            }
-            else
-            {
-                AddReward(1.0f);
-            }
-        }
-        else
-        {
-            AddReward(3.0f);
-            return MarkResult(Result::Finished);
-        }
-
-        return MarkResult(Result::Ongoing);
-    }
+    void Initialize() override;
+    Result Step() override;
 
     virtual bool Evaluate() = 0;
     virtual void AddCard(int card) { m_Hand += card; m_Cards++; }
@@ -88,6 +48,11 @@ public:
         m_Outputs.resize(k_Outputs);
         m_Outputs[0] = 0.0f;
         m_Cards = 0;
+    }
+
+    bool Evaluate() override
+    {
+        return m_NeuralNetwork.Evaluate(m_Inputs, m_Outputs);
     }
 
     void AddCard(int card) override
@@ -128,3 +93,52 @@ public:
     int GetRLInputsCount() const override { return BlackjackRLAgent::k_Inputs; }
     int GetRLOutputsCount() const override { return BlackjackRLAgent::k_Outputs; }
 };
+
+
+void BlackjackBaseAgent::Initialize()
+{ 
+    m_Hand = 0; 
+    m_Cards = 0; 
+}
+
+BlackjackBaseAgent::Result BlackjackBaseAgent::Step()
+{
+    if (m_Hand > 21)
+    {
+        AddReward(-10.0f);
+        return MarkResult(Result::Finished);
+    }
+
+    if (!Evaluate())
+        return MarkResult(Result::Failed);
+
+    if (TakeCard())
+    {
+        int card = m_Blackjack.PickCard();
+        AddCard(card);
+        m_Hand += card;
+        m_Cards++;
+
+        if (m_Hand > 21)
+        {
+            AddReward(-10.0f);
+            return MarkResult(Result::Finished);
+        }
+        else if (m_Hand == 21)
+        {
+            AddReward(10.0f);
+            return MarkResult(Result::Finished);
+        }
+        else
+        {
+            AddReward(1.0f);
+        }
+    }
+    else
+    {
+        AddReward(3.0f);
+        return MarkResult(Result::Finished);
+    }
+
+    return MarkResult(Result::Ongoing);
+}

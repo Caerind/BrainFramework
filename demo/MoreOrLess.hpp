@@ -13,63 +13,8 @@ public:
     {
     }
 
-    void Initialize() override 
-    {
-        m_NumberToGuess = m_MoreOrLess.GetNumberToGuess();
-        m_Guess = 0;
-    }
-
-    Result Step() override
-    {
-        if (m_Guess < 10)
-        {
-            if (!Evaluate())
-                return MarkResult(Result::Failed);
-
-            int numberGuessed = GetGuessedNumber();
-
-            if (numberGuessed < 0 || numberGuessed > 100)
-            {
-                AddReward(-100.0f);
-            }
-            else if (numberGuessed > 0)
-            {
-                AddReward(0.1f);
-            }
-
-            if (numberGuessed == m_NumberToGuess)
-            {
-                AddReward(100.0f / (m_Guess + 1));
-                return MarkResult(Result::Finished);
-            }
-            else
-            {
-                const float hint = numberGuessed > m_NumberToGuess ? -1.0f : 1.0f;
-
-                AddFeedback(m_Guess, numberGuessed, hint);
-
-                if (m_Guess > 0)
-                {
-                    if ((m_PreviousHint > 0.0f && numberGuessed > m_PreviousGuessed) || (m_PreviousHint < 0.0f && numberGuessed < m_PreviousGuessed))
-                    {
-                        AddReward(1.0f);
-                    }
-                }
-
-                m_Guess++;
-                m_PreviousGuessed = numberGuessed;
-                m_PreviousHint = hint;
-            }
-        }
-
-        if (m_Guess >= 10)
-        {
-            AddReward(-10.0f);
-            return MarkResult(Result::Finished);
-        }
-
-        return MarkResult(Result::Ongoing);
-    }
+    void Initialize() override;
+    Result Step() override;
 
     virtual bool Evaluate() = 0;
     virtual int GetGuessedNumber() const = 0;
@@ -156,3 +101,63 @@ public:
     int GetRLInputsCount() const override { return MoreOrLessRLAgent::k_Inputs; }
     int GetRLOutputsCount() const override { return MoreOrLessRLAgent::k_Outputs; }
 };
+
+
+
+void MoreOrLessBaseAgent::Initialize()
+{
+    m_NumberToGuess = m_MoreOrLess.GetNumberToGuess();
+    m_Guess = 0;
+}
+
+MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step()
+{
+    if (m_Guess < 10)
+    {
+        if (!Evaluate())
+            return MarkResult(Result::Failed);
+
+        int numberGuessed = GetGuessedNumber();
+
+        if (numberGuessed < 0 || numberGuessed > 100)
+        {
+            AddReward(-100.0f);
+        }
+        else if (numberGuessed > 0)
+        {
+            AddReward(0.1f);
+        }
+
+        if (numberGuessed == m_NumberToGuess)
+        {
+            AddReward(100.0f / (m_Guess + 1));
+            return MarkResult(Result::Finished);
+        }
+        else
+        {
+            const float hint = numberGuessed > m_NumberToGuess ? -1.0f : 1.0f;
+
+            AddFeedback(m_Guess, numberGuessed, hint);
+
+            if (m_Guess > 0)
+            {
+                if ((m_PreviousHint > 0.0f && numberGuessed > m_PreviousGuessed) || (m_PreviousHint < 0.0f && numberGuessed < m_PreviousGuessed))
+                {
+                    AddReward(1.0f);
+                }
+            }
+
+            m_Guess++;
+            m_PreviousGuessed = numberGuessed;
+            m_PreviousHint = hint;
+        }
+    }
+
+    if (m_Guess >= 10)
+    {
+        AddReward(-10.0f);
+        return MarkResult(Result::Finished);
+    }
+
+    return MarkResult(Result::Ongoing);
+}
