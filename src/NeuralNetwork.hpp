@@ -17,6 +17,9 @@ public:
     virtual int GetOutputsCount() = 0;
     virtual int GetNeuronsCount() = 0;
     virtual int GetLinksCount() = 0;
+
+    virtual bool LoadFromFile(const std::string& filename) = 0;
+    virtual bool SaveToFile(const std::string& filename) = 0;
 };
 
 class BasicNeuralNetwork : public NeuralNetwork
@@ -67,6 +70,16 @@ public:
         return count;
     }
 
+    bool LoadFromFile(const std::string& filename) override
+    {
+        return false;
+    }
+
+    bool SaveToFile(const std::string& filename) override
+    {
+        return false;
+    }
+
 private:
     std::vector<Neuron> m_Neurons;
     int m_Inputs{ 0 };
@@ -110,6 +123,16 @@ public:
             count += (m_LayerSizes[i - 1] * m_LayerSizes[i]);
         }
         return count;
+    }
+
+    bool LoadFromFile(const std::string& filename) override
+    {
+        return false;
+    }
+
+    bool SaveToFile(const std::string& filename) override
+    {
+        return false;
     }
 
 private:
