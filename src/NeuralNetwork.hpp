@@ -127,12 +127,58 @@ public:
 
     bool LoadFromFile(const std::string& filename) override
     {
-        return false;
+        std::ifstream file(filename);
+        if (!file)
+            return false;
+
+        auto computeSizeToReserve = [](const std::string& str)
+        {
+            std::size_t size = 0;
+            const std::size_t strSize = str.size();
+            for (std::size_t i = 0; i < strSize; ++i)
+                if (std::isspace(str[i]))
+                    size++;
+            return size;
+        };
+
+        std::string line;
+        
+        if (!std::getline(file, line))
+            return false;
+        m_LayerSizes.reserve(computeSizeToReserve(line));
+        std::stringstream layersStream(line);
+	    int layersValue;
+        while (layersStream >> layersValue)
+            m_LayerSizes.push_back(layersValue);
+
+        if (!std::getline(file, line))
+            return false;
+        m_Weights.reserve(computeSizeToReserve(line));
+        std::stringstream weightsStream(line);
+	    int weightsValue;
+        while (weightsStream >> weightsValue)
+            m_Weights.push_back(weightsValue);
+        
+        file.close();
+        return true;
     }
 
     bool SaveToFile(const std::string& filename) override
     {
-        return false;
+        std::ofstream file(filename);
+        if (!file)
+            return false;
+        
+        for (int s : m_LayerSizes)
+            file << s << " ";
+        file << std::endl;
+        
+        for (float w : m_Weights)
+            file << w << " ";
+        file << std::endl;
+        
+        file.close();
+        return true;
     }
 
 private:
