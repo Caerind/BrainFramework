@@ -155,7 +155,7 @@ public:
             return false;
         m_Weights.reserve(computeSizeToReserve(line));
         std::stringstream weightsStream(line);
-	    int weightsValue;
+	    float weightsValue;
         while (weightsStream >> weightsValue)
             m_Weights.push_back(weightsValue);
         
