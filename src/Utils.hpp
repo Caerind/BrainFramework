@@ -10,6 +10,8 @@
 #include <random>
 #include <memory>
 #include <fstream>
+#include <sstream>
+#include <cctype>
 
 #include <imgui.h>
 
