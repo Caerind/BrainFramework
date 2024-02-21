@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../src/BrainFramework.hpp"
-#include <string>
 
 class MoreOrLess;
 
@@ -63,7 +62,7 @@ public:
         return m_NeuralNetwork.Evaluate(m_Inputs, m_Outputs);
     }
 
-    int GetGuessedNumber() const override { static_cast<int>(std::round(m_Outputs[0] * 100.0f)); }
+    int GetGuessedNumber() const override { return static_cast<int>(std::round(m_Outputs[0] * 100.0f)); }
 
     void AddFeedback(int guessCount, int numberGuessed, float hint) override
     {
@@ -81,7 +80,10 @@ private:
 class MoreOrLess : public BrainFramework::Simulation<MoreOrLessBaseAgent>
 {
 public:
-    MoreOrLess() = default;
+    MoreOrLess()
+        : m_AgentCountSettings(BrainFramework::ISimulation::AgentCountSettings::Fixed, 1)
+    {
+    }
     MoreOrLess(const MoreOrLess&) = delete;
     MoreOrLess& operator=(const MoreOrLess&) = delete;
 
@@ -92,17 +94,19 @@ public:
 
     const char* GetName() const override { return "MoreOrLess"; }
 
-    BrainFramework::AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
-    {
-        m_Agents.emplace_back(std::make_unique<MoreOrLessRLAgent>(*this, neuralNetwork));
-        return m_Agents.back().get();
-    }
-
+    bool CanTrainRL() const { return true; }
     int GetRLInputsCount() const override { return MoreOrLessRLAgent::k_Inputs; }
     int GetRLOutputsCount() const override { return MoreOrLessRLAgent::k_Outputs; }
+    BrainFramework::AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
+    {
+        return CreateAgent<MoreOrLessRLAgent>(*this, neuralNetwork);
+    }
+
+    const AgentCountSettings& GetAgentCountSettings() const override { return m_AgentCountSettings; }
+
+private:
+    BrainFramework::ISimulation::AgentCountSettings m_AgentCountSettings;
 };
-
-
 
 void MoreOrLessBaseAgent::Initialize()
 {

@@ -12,6 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <cctype>
+#include <string>
 
 #include <imgui.h>
 

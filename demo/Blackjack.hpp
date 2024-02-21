@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../src/BrainFramework.hpp"
-#include <string>
 
 class Blackjack;
 
@@ -73,7 +72,10 @@ private:
 class Blackjack : public BrainFramework::Simulation<BlackjackBaseAgent>
 {
 public:
-    Blackjack() = default;
+    Blackjack()
+        : m_AgentCountSettings(BrainFramework::ISimulation::AgentCountSettings::Max, 4)
+    {
+    }
     Blackjack(const Blackjack&) = delete;
     Blackjack& operator=(const Blackjack&) = delete;
 
@@ -84,14 +86,18 @@ public:
 
     const char* GetName() const override { return "Blackjack"; }
 
-    BrainFramework::AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
-    {
-        m_Agents.emplace_back(std::make_unique<BlackjackRLAgent>(*this, neuralNetwork));
-        return m_Agents.back().get();
-    }
-
+    bool CanTrainRL() const { return true; }
     int GetRLInputsCount() const override { return BlackjackRLAgent::k_Inputs; }
     int GetRLOutputsCount() const override { return BlackjackRLAgent::k_Outputs; }
+    BrainFramework::AgentInterface* CreateRLAgent(BrainFramework::NeuralNetwork& neuralNetwork) override
+    {
+        return CreateAgent<BlackjackRLAgent>(*this, neuralNetwork);
+    }
+
+    const AgentCountSettings& GetAgentCountSettings() const override { return m_AgentCountSettings; }
+
+private:
+    BrainFramework::ISimulation::AgentCountSettings m_AgentCountSettings;
 };
 
 

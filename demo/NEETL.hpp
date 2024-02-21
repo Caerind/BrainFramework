@@ -20,9 +20,9 @@ namespace NEETL
         };
 
         static constexpr float k_PerturbChance = 0.90f; 
-        static constexpr float k_AddNeuronChance = 0.4f;
-        static constexpr float k_RemoveNeuronChance = 0.3f;
-        static constexpr float k_AddLayerChance = 0.01f;
+        static constexpr float k_AddNeuronChance = 0.5f;
+        static constexpr float k_RemoveNeuronChance = 0.4f;
+        static constexpr float k_AddLayerChance = 0.05f;
         static constexpr float k_AlterateWeightsChance = 1.1f;
         static constexpr float k_StepSize = 0.1f;
 
@@ -92,11 +92,11 @@ namespace NEETL
             m_Inputs = inputs;
             m_Outputs = outputs;
 
-            m_LayerSizes.reserve(2);
+            m_LayerSizes.resize(2);
             m_LayerSizes[0] = inputs;
             m_LayerSizes[1] = outputs;
 
-            m_Weights.reserve(inputs * outputs);
+            m_Weights.resize(inputs * outputs);
             int index = 0;
             for (int i = 0; i < m_Inputs; ++i)
             {
@@ -145,7 +145,7 @@ namespace NEETL
                 if (BrainFramework::RandomFloat() < p)
                 {
                     // Add Neuron
-                    int layerIndex = BrainFramework::RandomInt(0, intermediateLayerCount) + 1;
+                    int layerIndex = BrainFramework::RandomInt(1, intermediateLayerCount);
                     const int oldLayerSize = m_LayerSizes[layerIndex];
                     m_LayerSizes[layerIndex]++;
 

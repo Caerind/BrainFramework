@@ -22,7 +22,7 @@ int main()
     std::unique_ptr<BrainFramework::NeuralNetwork> neuralNetworkPtr = nullptr;
     BrainFramework::AgentInterface* playingAgent = nullptr;
 
-    int trainingSteps = 1000;
+    int trainingSteps = 100;
     bool isTraining = false;
     bool isPlaying = false;
 
@@ -50,98 +50,104 @@ int main()
                 ImGui::Text("%s", simulationPtr->GetName());
             }
 
-            ImGui::Text("Model: ");
-            ImGui::SameLine();
-            if (modelPtr == nullptr)
+            if (simulationPtr != nullptr)
             {
-                if (ImGui::Button("NEAT"))
+                if (simulationPtr->CanTrainRL())
                 {
-                    modelPtr = std::make_unique<NEAT::NEATModel>();
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("NEET"))
-                {
-                    modelPtr = std::make_unique<NEET::NEETModel>();
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("NEETL"))
-                {
-                    modelPtr = std::make_unique<NEETL::NEETLModel>();
-                }
-            }
-            else
-            {
-                ImGui::Text("%s", modelPtr->GetName());
-            }
-
-            if (modelPtr != nullptr && simulationPtr != nullptr)
-            {
-                if (!isPlaying)
-                {
-                    if (!isTraining)
+                    ImGui::Text("Model: ");
+                    ImGui::SameLine();
+                    if (modelPtr == nullptr)
                     {
-                        ImGui::InputInt("TrainingSteps", &trainingSteps);
-                        if (trainingSteps < 1)
-                            trainingSteps = 1;
-
-                        if (ImGui::Button("Train"))
+                        if (ImGui::Button("NEAT"))
                         {
-                            modelPtr->PrepareTraining(*simulationPtr);
-                            isTraining = true;
+                            modelPtr = std::make_unique<NEAT::NEATModel>();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("NEET"))
+                        {
+                            modelPtr = std::make_unique<NEET::NEETModel>();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("NEETL"))
+                        {
+                            modelPtr = std::make_unique<NEETL::NEETLModel>();
                         }
                     }
                     else
                     {
-                        for (int i = 0; i < trainingSteps; ++i)
-                        {
-                            modelPtr->Train(*simulationPtr);
-                        }
-
-                        if (ImGui::Button("Stop training"))
-                        {
-                            isTraining = false;
-                        }
-
-                        ImGui::Text("%s:", modelPtr->GetName());
-                        ImGui::Indent();
-                        modelPtr->DisplayImGui();
-                        ImGui::Unindent();
+                        ImGui::Text("%s", modelPtr->GetName());
                     }
                 }
 
-                if (!isTraining)
+                if (modelPtr != nullptr && simulationPtr != nullptr)
                 {
                     if (!isPlaying)
                     {
-                        if (ImGui::Button("Play"))
+                        if (!isTraining)
                         {
-                            isPlaying = true;
-                            modelPtr->MakeBestNeuralNetwork(neuralNetworkPtr);
-                            playingAgent = simulationPtr->CreateRLAgent(*neuralNetworkPtr);
-                        }
-                    }
-                    else
-                    {
-                        if (ImGui::Button("Stop playing"))
-                        {
-                            isPlaying = false;
-                        }
+                            ImGui::InputInt("TrainingSteps", &trainingSteps);
+                            if (trainingSteps < 1)
+                                trainingSteps = 1;
 
-                        if (playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Ongoing || playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Initialized)
-                        {
-                            if (ImGui::Button("Step"))
+                            if (ImGui::Button("Train"))
                             {
-                                playingAgent->Step();
+                                modelPtr->PrepareTraining(*simulationPtr);
+                                isTraining = true;
                             }
                         }
-
-                        if (playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Finished || playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Failed)
+                        else
                         {
-                            if (ImGui::Button("Stop"))
+                            for (int i = 0; i < trainingSteps; ++i)
+                            {
+                                modelPtr->Train(*simulationPtr);
+                            }
+
+                            if (ImGui::Button("Stop training"))
+                            {
+                                isTraining = false;
+                            }
+
+                            ImGui::Text("%s:", modelPtr->GetName());
+                            ImGui::Indent();
+                            modelPtr->DisplayImGui();
+                            ImGui::Unindent();
+                        }
+                    }
+
+                    if (!isTraining)
+                    {
+                        if (!isPlaying)
+                        {
+                            if (ImGui::Button("Play"))
+                            {
+                                isPlaying = true;
+                                modelPtr->MakeBestNeuralNetwork(neuralNetworkPtr);
+                                playingAgent = simulationPtr->CreateRLAgent(*neuralNetworkPtr);
+                            }
+                        }
+                        else
+                        {
+                            if (ImGui::Button("Stop playing"))
                             {
                                 isPlaying = false;
-                                simulationPtr->RemoveAgent(playingAgent);
-                                playingAgent = nullptr;
+                            }
+
+                            if (playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Ongoing || playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Initialized)
+                            {
+                                if (ImGui::Button("Step"))
+                                {
+                                    playingAgent->Step();
+                                }
+                            }
+
+                            if (playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Finished || playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Failed)
+                            {
+                                if (ImGui::Button("Stop"))
+                                {
+                                    isPlaying = false;
+                                    simulationPtr->RemoveAgent(playingAgent);
+                                    playingAgent = nullptr;
+                                }
                             }
                         }
                     }
