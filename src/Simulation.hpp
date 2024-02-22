@@ -61,10 +61,10 @@ public:
     }
 
     template <typename AgentType, typename ... AgentArgs>
-    AgentInterface* CreateAgent(AgentArgs&& ... args)
+    BaseAgentType* CreateAgent(AgentArgs&& ... args)
     {
         m_Agents.emplace_back(std::make_unique<AgentType>(std::forward<AgentArgs>(args)...));
-        return static_cast<AgentInterface*>(m_Agents.back().get());
+        return m_Agents.back().get();
     }
 
     void RemoveAgent(AgentInterface* agent) override
