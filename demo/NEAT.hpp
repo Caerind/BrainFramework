@@ -573,37 +573,35 @@ public:
 
         m_CurrentSpecies = 0;
         m_CurrentGenome = 0;
-        return Model::PrepareTraining(simulation);
+        return true;
     }
 
-    bool Train(BrainFramework::ISimulation& simulation) override
+    bool StartEvaluation(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
     {
         Genome& genome = m_Species[m_CurrentSpecies].GetGenomes()[m_CurrentGenome];
 
-        BrainFramework::BasicNeuralNetwork neuralNetwork;
-        if (!genome.MakeNeuralNetwork(neuralNetwork))
+        std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
+        if (!genome.MakeNeuralNetwork(*basicNeuralNetwork))
         {
             return false;
         }
 
-        BrainFramework::AgentInterface* agent = simulation.CreateRLAgent(neuralNetwork);
+        neuralNetwork = std::move(basicNeuralNetwork);
 
-        agent->Initialize();
-        auto result = BrainFramework::AgentInterface::Result::Initialized;
-        do 
-        {
-            result = agent->Step();
-            genome.SetScore(agent->GetScore());
-        } while (result == BrainFramework::AgentInterface::Result::Ongoing);
+        return true;
+    }
 
-        simulation.RemoveAgent(agent);
+    bool EndEvalutation(float result) override
+    {
+        Genome& genome = m_Species[m_CurrentSpecies].GetGenomes()[m_CurrentGenome];
+        genome.SetScore(result);
 
         NextGenome();
 
         return true;
     }
 
-    bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
+    bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork, int index = 0) override
     {
         std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
         const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);

@@ -13,7 +13,7 @@ public:
     }
 
     void Initialize() override;
-    Result Step() override;
+    Result Step(bool allowLog = false) override;
 
     virtual bool Evaluate() = 0;
     virtual int GetGuessedNumber() const = 0;
@@ -22,7 +22,6 @@ public:
 private:
     MoreOrLess& m_MoreOrLess;
 protected:
-    int m_NumberToGuess{ 0 };
     int m_Guess{ 0 };
     int m_PreviousGuessed{ -1 };
     float m_PreviousHint{ 0.0f };
@@ -80,16 +79,25 @@ private:
 class MoreOrLess : public BrainFramework::Simulation<MoreOrLessBaseAgent>
 {
 public:
+    using super = BrainFramework::Simulation<MoreOrLessBaseAgent>;
+
     MoreOrLess()
-        : m_AgentCountSettings(BrainFramework::ISimulation::AgentCountSettings::Fixed, 1)
+        : super(BrainFramework::AgentCountSettings(BrainFramework::AgentCountSettings::Max, 4))
     {
     }
     MoreOrLess(const MoreOrLess&) = delete;
     MoreOrLess& operator=(const MoreOrLess&) = delete;
 
+    void Initialize() override
+    {
+        m_NumberToGuess = std::rand() % (100 + 1); // [0,100]
+    }
+
+    bool IsFinished() const override { return false; }
+
     int GetNumberToGuess() const
     {
-        return std::rand() % (100 + 1); // [0,100]
+        return m_NumberToGuess;  
     }
 
     const char* GetName() const override { return "MoreOrLess"; }
@@ -102,26 +110,32 @@ public:
         return CreateAgent<MoreOrLessRLAgent>(*this, neuralNetwork);
     }
 
-    const AgentCountSettings& GetAgentCountSettings() const override { return m_AgentCountSettings; }
-
 private:
-    BrainFramework::ISimulation::AgentCountSettings m_AgentCountSettings;
+    int m_NumberToGuess {-1};
 };
 
 void MoreOrLessBaseAgent::Initialize()
 {
-    m_NumberToGuess = m_MoreOrLess.GetNumberToGuess();
     m_Guess = 0;
+    m_Result = BrainFramework::AgentInterface::Result::Initialized;
 }
 
-MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step()
+MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step(bool allowLog)
 {
+    if (m_Guess == 0 && allowLog)
+        m_Logs.push_back("NumberToGuess: " + std::to_string(m_MoreOrLess.GetNumberToGuess()));
+
     if (m_Guess < 10)
     {
+        std::string log;
+
         if (!Evaluate())
             return MarkResult(Result::Failed);
 
         int numberGuessed = GetGuessedNumber();
+
+        if (allowLog)
+            log += std::to_string(numberGuessed);
 
         if (numberGuessed < 0 || numberGuessed > 100)
         {
@@ -132,16 +146,23 @@ MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step()
             AddReward(0.1f);
         }
 
-        if (numberGuessed == m_NumberToGuess)
+        if (numberGuessed == m_MoreOrLess.GetNumberToGuess())
         {
             AddReward(100.0f / (m_Guess + 1));
+            if (allowLog)
+                m_Logs.push_back(log);
             return MarkResult(Result::Finished);
         }
         else
         {
-            const float hint = numberGuessed > m_NumberToGuess ? -1.0f : 1.0f;
+            const float hint = numberGuessed > m_MoreOrLess.GetNumberToGuess() ? -1.0f : 1.0f;
 
             AddFeedback(m_Guess, numberGuessed, hint);
+
+            if (allowLog && hint > 0.0f)
+                log += " +";
+            if (allowLog && hint < 0.0f)
+                log += " -";
 
             if (m_Guess > 0)
             {
@@ -155,6 +176,9 @@ MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step()
             m_PreviousGuessed = numberGuessed;
             m_PreviousHint = hint;
         }
+
+        if (allowLog)
+            m_Logs.push_back(log);
     }
 
     if (m_Guess >= 10)

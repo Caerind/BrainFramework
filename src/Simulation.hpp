@@ -6,14 +6,37 @@
 namespace BrainFramework
 {
 
+class AgentCountSettings
+{
+public:
+    enum AgentCountType
+    {
+        Fixed,
+        Max,
+        Unlimited
+    };
+
+    AgentCountSettings(AgentCountType type, int value = -1) : m_Type(type), m_Value(value) {}
+
+    AgentCountType GetAgentCountType() const { return m_Type; }
+    int GetValue() const { return m_Type != AgentCountType::Unlimited ? m_Value : -1; }
+
+private:
+    AgentCountType m_Type;
+    int m_Value;
+};
+
 class ISimulation
 {
 public:
-    ISimulation() = default;
+    ISimulation(const AgentCountSettings& agentCountSettings) : m_AgentCountSettings(agentCountSettings) {}
     ISimulation(const ISimulation&) = delete;
     ISimulation& operator=(const ISimulation&) = delete;
 
     virtual const char* GetName() const = 0;
+
+    virtual void Initialize() {}
+    virtual bool IsFinished() const = 0;
 
     virtual bool CanTrainRL() const = 0;
     virtual int GetRLInputsCount() const = 0;
@@ -22,33 +45,17 @@ public:
 
     virtual void RemoveAgent(AgentInterface* agent) = 0;
 
-    class AgentCountSettings
-    {
-    public:
-        enum AgentCountType
-        {
-            Fixed,
-            Max,
-            Unlimited
-        };
+    const AgentCountSettings& GetAgentCountSettings() const { return m_AgentCountSettings; }
 
-        AgentCountSettings(AgentCountType type, int value = -1) : m_Type(type), m_Value(value) {}
-
-        AgentCountType GetAgentCountType() const { return m_Type; }
-        int GetValue() const { return m_Type != AgentCountType::Unlimited ? m_Value : -1; }
-
-    private:
-        AgentCountType m_Type;
-        int m_Value;
-    };
-    virtual const AgentCountSettings& GetAgentCountSettings() const = 0;
+private:
+    AgentCountSettings m_AgentCountSettings;
 };
 
 template <typename BaseAgentType>
 class Simulation : public ISimulation
 {
 public:
-    Simulation() = default;
+    Simulation(const AgentCountSettings& agentCountSettings) : ISimulation(agentCountSettings) {}
     Simulation(const Simulation&) = delete;
     Simulation& operator=(const Simulation&) = delete;
 

@@ -13,7 +13,7 @@ public:
     }
 
     void Initialize() override;
-    Result Step() override;
+    Result Step(bool allowLog = false) override;
 
     virtual bool Evaluate() = 0;
     virtual void AddCard(int card) { m_Hand += card; m_Cards++; }
@@ -72,16 +72,41 @@ private:
 class Blackjack : public BrainFramework::Simulation<BlackjackBaseAgent>
 {
 public:
+    using super = BrainFramework::Simulation<BlackjackBaseAgent>;
+
     Blackjack()
-        : m_AgentCountSettings(BrainFramework::ISimulation::AgentCountSettings::Max, 4)
+        : super(BrainFramework::AgentCountSettings(BrainFramework::AgentCountSettings::Max, 4))
     {
     }
     Blackjack(const Blackjack&) = delete;
     Blackjack& operator=(const Blackjack&) = delete;
 
+    void Initialize() override
+    {
+        m_AllCards.clear();
+        for (int color = 0; color < 4; ++color)
+        {
+            for (int i = 2; i < 10; ++i)
+            {
+                m_AllCards.push_back(i); // 2 to 9
+            }
+
+            m_AllCards.push_back(10);
+            m_AllCards.push_back(10);
+            m_AllCards.push_back(10);
+
+            m_AllCards.push_back(1); // As is tricky...
+        }
+    }
+
+    bool IsFinished() const override { return false; }
+
     int PickCard()
     {
-        return rand() % 11 + 1;
+        const int rIndex = BrainFramework::RandomIndex(m_AllCards);
+        const int card = m_AllCards[rIndex];
+        m_AllCards.erase(m_AllCards.begin() + rIndex);
+        return card;
     }
 
     const char* GetName() const override { return "Blackjack"; }
@@ -94,20 +119,19 @@ public:
         return CreateAgent<BlackjackRLAgent>(*this, neuralNetwork);
     }
 
-    const AgentCountSettings& GetAgentCountSettings() const override { return m_AgentCountSettings; }
-
-private:
-    BrainFramework::ISimulation::AgentCountSettings m_AgentCountSettings;
+private: 
+    std::vector<int> m_AllCards;
 };
 
 
 void BlackjackBaseAgent::Initialize()
 { 
     m_Hand = 0; 
-    m_Cards = 0; 
+    m_Cards = 0;
+    m_Result = BrainFramework::AgentInterface::Result::Initialized;
 }
 
-BlackjackBaseAgent::Result BlackjackBaseAgent::Step()
+BlackjackBaseAgent::Result BlackjackBaseAgent::Step(bool allowLog)
 {
     if (m_Hand > 21)
     {

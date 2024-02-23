@@ -20,11 +20,12 @@ namespace NEETL
         };
 
         static constexpr float k_PerturbChance = 0.90f; 
-        static constexpr float k_AddNeuronChance = 0.5f;
-        static constexpr float k_RemoveNeuronChance = 0.4f;
-        static constexpr float k_AddLayerChance = 0.05f;
+        static constexpr float k_AddNeuronChance = 0.15f;
+        static constexpr float k_RemoveNeuronChance = 0.1f;
+        static constexpr float k_AddLayerChance = 0.01f;
         static constexpr float k_AlterateWeightsChance = 1.1f;
         static constexpr float k_StepSize = 0.1f;
+        static constexpr int k_InitialIntermediateLayers = 3;
 
         Genome()
         {
@@ -104,6 +105,11 @@ namespace NEETL
                 {
                     m_Weights[index] = BrainFramework::RandomFloat() * 4.0f - 2.0f;
                 }
+            }
+
+            for (int j = 0; j < k_InitialIntermediateLayers; ++j)
+            {
+                BrainFramework::LayeredNeuralNetwork::AddLayer(m_LayerSizes, m_Weights, 1);
             }
         }
 
@@ -251,11 +257,14 @@ namespace NEETL
             ImGui::PlotHistogram("AverageScoreTop10", m_AverageScoreTop10Array.data(), static_cast<int>(m_AverageScoreTop10Array.size()), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
             ImGui::PlotHistogram("AverageScore", m_AverageScoreArray.data(), static_cast<int>(m_AverageScoreArray.size()), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(0, 80));
 
-            ImGui::Text("BestGenome:");
-            ImGui::Indent();
-            ImGui::Text("Neurons: %d", m_BestGenome.GetNeuronsCount());
-            ImGui::Text("Links: %d", m_BestGenome.GetLinksCount());
-            ImGui::Unindent();
+            if (!m_Bests.empty())
+            {
+                ImGui::Text("BestGenome:");
+                ImGui::Indent();
+                ImGui::Text("Neurons: %d", m_Bests[0].GetNeuronsCount());
+                ImGui::Text("Links: %d", m_Bests[0].GetLinksCount());
+                ImGui::Unindent();
+            }
         }
 
         bool PrepareTraining(const BrainFramework::ISimulation& simulation) override
@@ -270,52 +279,60 @@ namespace NEETL
                 }
             }
 
+            m_Bests.clear();
+            m_Bests.resize(k_BestCount);
+
             m_CurrentGenome = 0;
-            return Model::PrepareTraining(simulation);
-        }
-
-        bool Train(BrainFramework::ISimulation& simulation) override
-        {
-            Genome& genome = m_Genomes[m_CurrentGenome];
-
-            BrainFramework::LayeredNeuralNetwork neuralNetwork;
-            if (!genome.MakeNeuralNetwork(neuralNetwork))
-            {
-                return false;
-            }
-
-            BrainFramework::AgentInterface* agent = simulation.CreateRLAgent(neuralNetwork);
-
-            constexpr int batchSize = 10;
-            float scoreSum = 0.0f;
-
-            for (int i = 0; i < batchSize; ++i)
-            {
-                agent->Initialize();
-                auto result = BrainFramework::AgentInterface::Result::Initialized;
-                do
-                {
-                    result = agent->Step();
-                } while (result == BrainFramework::AgentInterface::Result::Ongoing);
-
-                scoreSum += agent->GetScore();
-            }
-
-            simulation.RemoveAgent(agent);
-
-            genome.EndBatch(scoreSum / batchSize);
-
-            NextGenome();
+            m_CurrentGenomeEvaluation = 0;
+            m_CurrentGenomeScoreSum = 0.0f;
 
             return true;
         }
 
-        bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
+        bool StartEvaluation(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
         {
-            std::unique_ptr<BrainFramework::LayeredNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::LayeredNeuralNetwork>();
-            const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
+            Genome& genome = m_Genomes[m_CurrentGenome];
 
-            neuralNetwork = std::move(basicNeuralNetwork);
+            std::unique_ptr<BrainFramework::LayeredNeuralNetwork> layeredNeuralNetwork = std::make_unique<BrainFramework::LayeredNeuralNetwork>();
+            if (!genome.MakeNeuralNetwork(*layeredNeuralNetwork))
+            {
+                return false;
+            }
+
+            neuralNetwork = std::move(layeredNeuralNetwork);
+
+            return true;
+        }
+
+        bool EndEvalutation(float result) override
+        {
+            Genome& genome = m_Genomes[m_CurrentGenome];
+
+            m_CurrentGenomeEvaluation++;
+            m_CurrentGenomeScoreSum += result;
+
+            constexpr int batchSize = 10;
+            if (m_CurrentGenomeEvaluation >= batchSize)
+            {
+                genome.EndBatch(m_CurrentGenomeScoreSum / batchSize);
+
+                m_CurrentGenomeEvaluation = 0;
+                m_CurrentGenomeScoreSum = 0.0f;
+
+                NextGenome();
+            }
+
+            return true;
+        }
+
+        bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork, int index = 0) override
+        {
+            index = index % k_BestCount;
+
+            std::unique_ptr<BrainFramework::LayeredNeuralNetwork> layeredNeuralNetwork = std::make_unique<BrainFramework::LayeredNeuralNetwork>();
+            const bool result = m_Bests[index].MakeNeuralNetwork(*layeredNeuralNetwork);
+
+            neuralNetwork = std::move(layeredNeuralNetwork);
 
             return result;
         }
@@ -333,11 +350,9 @@ namespace NEETL
         void NewGeneration()
         {
             m_MaxLifetime = 0;
-            m_AverageScore = 0.0f;
             for (Genome& genome : m_Genomes)
             {
                 if (genome.GetLifetime() > m_MaxLifetime) m_MaxLifetime = genome.GetLifetime();
-                m_AverageScore += genome.GetAverageScore();
             }
 
             std::sort(m_Genomes.begin(), m_Genomes.end(), [&](const Genome& a, const Genome& b)
@@ -346,7 +361,10 @@ namespace NEETL
                 });
 
             // Save our best
-            m_BestGenome.CopyFrom(m_Genomes[0]);
+            for (int i = 0; i < k_BestCount; ++i)
+            {
+                m_Bests[i].CopyFrom(m_Genomes[0]);
+            }
 
             // Cull the bottom
             m_Genomes.erase(m_Genomes.begin() + m_Genomes.size() / k_Cut, m_Genomes.end());
@@ -407,15 +425,18 @@ namespace NEETL
 
         static constexpr int k_Population = 300;
         static constexpr int k_Cut = 3;
+        static constexpr int k_BestCount = 10;
 
         static constexpr int k_HistogramValues = 300;
 
         static constexpr float k_ResetMaxScore = -100000.0f;
 
     private:
-        Genome m_BestGenome;
+        std::vector<Genome> m_Bests;
         std::vector<Genome> m_Genomes;
         int m_CurrentGenome{ 0 };
+        int m_CurrentGenomeEvaluation{ 0 };
+        float m_CurrentGenomeScoreSum{ 0 };
 
         int m_Generation{ 0 };
         int m_MaxLifetime{ 0 };

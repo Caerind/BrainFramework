@@ -13,16 +13,33 @@
 #include "MoreOrLess.hpp"
 #include "Blackjack.hpp"
 
+struct Player
+{
+    Player() = default;
+
+    std::unique_ptr<BrainFramework::Model> model;
+    std::unique_ptr<BrainFramework::NeuralNetwork> neuralNetwork;
+    BrainFramework::AgentInterface* agent;
+};
+
+enum class State
+{
+    Config,
+    Menu,
+    Train,
+    Play
+};
+
 int main()
 {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     std::unique_ptr<BrainFramework::ISimulation> simulationPtr = nullptr;
-    std::unique_ptr<BrainFramework::Model> modelPtr = nullptr;
-    std::unique_ptr<BrainFramework::NeuralNetwork> neuralNetworkPtr = nullptr;
-    BrainFramework::AgentInterface* playingAgent = nullptr;
+    std::vector<Player> players;
 
-    int trainingSteps = 100;
+    State state = State::Config;
+
+    int trainingSteps = 10;
     bool isTraining = false;
     bool isPlaying = false;
 
@@ -52,105 +69,204 @@ int main()
 
             if (simulationPtr != nullptr)
             {
-                if (simulationPtr->CanTrainRL())
+                int currentPlayerCount = static_cast<int>(players.size());
+
+                int minPlayerCount = 1;
+                if (simulationPtr->GetAgentCountSettings().GetAgentCountType() == BrainFramework::AgentCountSettings::Fixed)
                 {
-                    ImGui::Text("Model: ");
-                    ImGui::SameLine();
-                    if (modelPtr == nullptr)
+                    minPlayerCount = simulationPtr->GetAgentCountSettings().GetValue();
+                }
+
+                int maxPlayerCount = simulationPtr->GetAgentCountSettings().GetValue();
+                if (simulationPtr->GetAgentCountSettings().GetAgentCountType() == BrainFramework::AgentCountSettings::Unlimited)
+                {
+                    maxPlayerCount = 10;
+                }
+
+                for (Player& player : players)
+                {
+                    switch (state)
+                    {
+                        case State::Config:
+                        {
+                            // TODO : Model config
+                            ImGui::Text("%s", player.model->GetName());
+                        } break;
+                        case State::Menu: break;
+                        case State::Train:
+                        {
+                            if (ImGui::CollapsingHeader(player.model->GetName()))
+                            {
+                                player.model->DisplayImGui();
+                            }
+                        } break;
+                        case State::Play:
+                        {
+                            // Nothing ?
+                        } break;
+                    }
+                }
+
+                switch (state)
+                {
+                case State::Config:
+                {
+                    if (currentPlayerCount < maxPlayerCount)
                     {
                         if (ImGui::Button("NEAT"))
                         {
-                            modelPtr = std::make_unique<NEAT::NEATModel>();
+                            Player& player = players.emplace_back();
+                            player.model = std::make_unique<NEAT::NEATModel>();
                         }
                         ImGui::SameLine();
                         if (ImGui::Button("NEET"))
                         {
-                            modelPtr = std::make_unique<NEET::NEETModel>();
+                            Player& player = players.emplace_back();
+                            player.model = std::make_unique<NEET::NEETModel>();
                         }
                         ImGui::SameLine();
                         if (ImGui::Button("NEETL"))
                         {
-                            modelPtr = std::make_unique<NEETL::NEETLModel>();
+                            Player& player = players.emplace_back();
+                            player.model = std::make_unique<NEETL::NEETLModel>();
                         }
                     }
-                    else
-                    {
-                        ImGui::Text("%s", modelPtr->GetName());
-                    }
-                }
 
-                if (modelPtr != nullptr && simulationPtr != nullptr)
+                    if (currentPlayerCount >= minPlayerCount)
+                    {
+                        if (ImGui::Button("Ready"))
+                        {
+                            state = State::Menu;
+                        }
+                    }
+                } break;
+
+                case State::Menu:
                 {
-                    if (!isPlaying)
+                    if (ImGui::Button("Train"))
                     {
-                        if (!isTraining)
+                        state = State::Train;
+                        for (Player& player : players)
+                            player.model->PrepareTraining(*simulationPtr);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Play"))
+                    {
+                        state = State::Play;
+
+                        simulationPtr->Initialize();
+
+                        for (Player& player : players)
                         {
-                            ImGui::InputInt("TrainingSteps", &trainingSteps);
-                            if (trainingSteps < 1)
-                                trainingSteps = 1;
-
-                            if (ImGui::Button("Train"))
-                            {
-                                modelPtr->PrepareTraining(*simulationPtr);
-                                isTraining = true;
-                            }
-                        }
-                        else
-                        {
-                            for (int i = 0; i < trainingSteps; ++i)
-                            {
-                                modelPtr->Train(*simulationPtr);
-                            }
-
-                            if (ImGui::Button("Stop training"))
-                            {
-                                isTraining = false;
-                            }
-
-                            ImGui::Text("%s:", modelPtr->GetName());
-                            ImGui::Indent();
-                            modelPtr->DisplayImGui();
-                            ImGui::Unindent();
+                            player.model->MakeBestNeuralNetwork(player.neuralNetwork);
+                            player.agent = simulationPtr->CreateRLAgent(*player.neuralNetwork);
+                            player.agent->Initialize();
                         }
                     }
+                } break;
 
-                    if (!isTraining)
+                case State::Train:
+                {
+                    ImGui::InputInt("TrainingSteps", &trainingSteps);
+                    if (trainingSteps < 1)
+                        trainingSteps = 1;
+
+                    if (ImGui::Button("Stop training"))
                     {
-                        if (!isPlaying)
-                        {
-                            if (ImGui::Button("Play"))
-                            {
-                                isPlaying = true;
-                                modelPtr->MakeBestNeuralNetwork(neuralNetworkPtr);
-                                playingAgent = simulationPtr->CreateRLAgent(*neuralNetworkPtr);
-                            }
-                        }
-                        else
-                        {
-                            if (ImGui::Button("Stop playing"))
-                            {
-                                isPlaying = false;
-                            }
+                        state = State::Menu;
+                    }
 
-                            if (playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Ongoing || playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Initialized)
+                    for (int trainingStep = 0; trainingStep < trainingSteps; ++trainingStep)
+                    {
+                        simulationPtr->Initialize();
+
+                        for (Player& player : players)
+                        {
+                            player.model->StartEvaluation(player.neuralNetwork);
+                            player.agent = simulationPtr->CreateRLAgent(*player.neuralNetwork);
+                            player.agent->Initialize();
+                        }
+
+                        bool simualtionShouldContinue = true;
+                        bool someAgentIsStillPlaying = true;
+
+                        do
+                        {
+                            simualtionShouldContinue = !simulationPtr->IsFinished();
+                            someAgentIsStillPlaying = false;
+
+                            for (Player& player : players)
                             {
-                                if (ImGui::Button("Step"))
+                                auto result = player.agent->Step();
+                                if (result == BrainFramework::AgentInterface::Result::Ongoing)
                                 {
-                                    playingAgent->Step();
+                                    someAgentIsStillPlaying = true;
                                 }
                             }
 
-                            if (playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Finished || playingAgent->GetResult() == BrainFramework::AgentInterface::Result::Failed)
+                        } while (simualtionShouldContinue && someAgentIsStillPlaying);
+
+                        for (Player& player : players)
+                        {
+                            player.model->EndEvalutation(player.agent->GetScore());
+                            simulationPtr->RemoveAgent(player.agent); // TODO : Reset agent on Initialize ?
+                            player.agent = nullptr;
+                        }
+                    }
+
+                } break;
+
+                case State::Play:
+                {
+                    if (ImGui::Button("Stop playing"))
+                    {
+                        state = State::Menu;
+                    }
+
+                    if (ImGui::Button("Step"))
+                    {
+                        bool simualtionShouldContinue = !simulationPtr->IsFinished();
+                        bool someAgentIsStillPlaying = false;
+
+                        for (Player& player : players)
+                        {
+                            if (player.agent != nullptr)
                             {
-                                if (ImGui::Button("Stop"))
+                                auto result = player.agent->Step(true);
+                                if (result == BrainFramework::AgentInterface::Result::Ongoing)
                                 {
-                                    isPlaying = false;
-                                    simulationPtr->RemoveAgent(playingAgent);
-                                    playingAgent = nullptr;
+                                    someAgentIsStillPlaying = true;
                                 }
                             }
                         }
+
+                        if (!(simualtionShouldContinue && someAgentIsStillPlaying))
+                        {
+                            for (Player& player : players)
+                            {
+                                player.model->EndEvalutation(player.agent->GetScore());
+                                simulationPtr->RemoveAgent(player.agent); // TODO : Reset agent on Initialize ?
+                                player.agent = nullptr;
+                            }
+                        }
                     }
+
+                    ImGui::Separator();
+
+                    for (Player& player : players)
+                    {
+                        if (player.agent != nullptr)
+                        {
+                            for (const std::string& log : player.agent->GetLogs())
+                            {
+                                ImGui::Text("%s", log.c_str());
+                            }
+                        }
+
+                        ImGui::Separator();
+                    }
+                    
+                } break;
                 }
             }
         }

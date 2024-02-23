@@ -449,46 +449,49 @@ public:
         }
 
         m_CurrentGenome = 0;
-        return Model::PrepareTraining(simulation);
-    }
-
-    bool Train(BrainFramework::ISimulation& simulation) override
-    {
-        Genome& genome = m_Genomes[m_CurrentGenome];
-
-        BrainFramework::BasicNeuralNetwork neuralNetwork;
-        if (!genome.MakeNeuralNetwork(neuralNetwork))
-        {
-            return false;
-        }
-
-        BrainFramework::AgentInterface* agent = simulation.CreateRLAgent(neuralNetwork);
-
-        constexpr int batchSize = 10;
-        float scoreSum = 0.0f;
-
-        for (int i = 0; i < batchSize; ++i)
-        {
-            agent->Initialize();
-            auto result = BrainFramework::AgentInterface::Result::Initialized;
-            do
-            {
-                result = agent->Step();
-            } while (result == BrainFramework::AgentInterface::Result::Ongoing);
-
-            scoreSum += agent->GetScore();
-        }
-
-        simulation.RemoveAgent(agent);
-
-        genome.EndBatch(scoreSum / batchSize);
-
-        NextGenome();        
+        m_CurrentGenomeEvaluation = 0;
+        m_CurrentGenomeScoreSum = 0.0f;
 
         return true;
     }
 
-    bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
+    bool StartEvaluation(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork) override
+    {
+        Genome& genome = m_Genomes[m_CurrentGenome];
+
+        std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
+        if (!genome.MakeNeuralNetwork(*basicNeuralNetwork))
+        {
+            return false;
+        }
+
+        neuralNetwork = std::move(basicNeuralNetwork);
+
+        return true;
+    }
+
+    bool EndEvalutation(float result) override
+    {
+        Genome& genome = m_Genomes[m_CurrentGenome];
+
+        m_CurrentGenomeEvaluation++;
+        m_CurrentGenomeScoreSum += result;
+
+        constexpr int batchSize = 10;
+        if (m_CurrentGenomeEvaluation >= batchSize)
+        {
+            genome.EndBatch(m_CurrentGenomeScoreSum / batchSize);
+
+            m_CurrentGenomeEvaluation = 0;
+            m_CurrentGenomeScoreSum = 0.0f;
+
+            NextGenome();
+        }
+
+        return true;
+    }
+
+    bool MakeBestNeuralNetwork(std::unique_ptr<BrainFramework::NeuralNetwork>& neuralNetwork, int index = 0) override
     {
         std::unique_ptr<BrainFramework::BasicNeuralNetwork> basicNeuralNetwork = std::make_unique<BrainFramework::BasicNeuralNetwork>();
         const bool result = m_BestGenome.MakeNeuralNetwork(*basicNeuralNetwork);
@@ -594,6 +597,8 @@ private:
     Genome m_BestGenome;
     std::vector<Genome> m_Genomes;
     int m_CurrentGenome{ 0 };
+    int m_CurrentGenomeEvaluation{ 0 };
+    float m_CurrentGenomeScoreSum{ 0 };
 
     int m_Generation{ 0 };
     int m_MaxLifetime{ 0 };
