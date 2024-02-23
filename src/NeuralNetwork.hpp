@@ -181,6 +181,114 @@ public:
         return true;
     }
 
+    static bool AddNeuronOnLayer(std::vector<int>& layerSizes, std::vector<float>& weights, int layerIndex)
+    {
+        if (layerSizes.size() < 2 || weights.empty() || layerIndex <= 0 || layerIndex >= static_cast<int>(layerSizes.size() - 1))
+            return false;
+
+        const int oldLayerSize = layerSizes[layerIndex];
+        layerSizes[layerIndex]++;
+
+        int weightBeginIndex = 0;
+        for (int i = 1; i < layerIndex; ++i)
+            weightBeginIndex += (layerSizes[i] * layerSizes[i - 1]);
+
+        // Add links from previous layer
+        const int previousLayerNeurons = layerSizes[layerIndex - 1];
+        for (int i = 0; i < previousLayerNeurons; ++i)
+        {
+            const int index = weightBeginIndex + oldLayerSize * (i + 1) - 1;
+            weights.insert(weights.begin() + index, BrainFramework::RandomFloat() * 4.0f - 2.0f);
+        }
+
+        weightBeginIndex += previousLayerNeurons * layerSizes[layerIndex];
+
+        // Add links for next layer
+        const int nextLayerNeurons = layerSizes[layerIndex + 1];
+        const int nextWeightsIndex = weightBeginIndex + oldLayerSize * nextLayerNeurons;
+        weights.insert(weights.begin() + nextWeightsIndex, nextLayerNeurons, 0.0f);
+        for (int i = 0; i < nextLayerNeurons; ++i)
+        {
+            weights[nextWeightsIndex + i] = BrainFramework::RandomFloat() * 4.0f - 2.0f;
+        }
+
+        return true;
+    }
+
+    static bool RemoveNeuronOnLayer(std::vector<int>& layerSizes, std::vector<float>& weights, int layerIndex)
+    {
+        if (layerSizes.size() < 2 || weights.empty() || layerIndex <= 0 || layerIndex >= static_cast<int>(layerSizes.size() - 1))
+            return false;
+
+        const int oldLayerSize = layerSizes[layerIndex];
+        if (oldLayerSize <= 1)
+            return false;
+        layerSizes[layerIndex]--;
+
+        int weightBeginIndex = 0;
+        for (int i = 1; i < layerIndex; ++i)
+            weightBeginIndex += (layerSizes[i] * layerSizes[i - 1]);
+        const int previousLayerNeurons = layerSizes[layerIndex - 1];
+
+        weightBeginIndex += oldLayerSize * previousLayerNeurons;
+
+        // Remove links from next layer (do this one first to optimize remove operations on std::vector)
+        const int nextLayerNeurons = layerSizes[layerIndex + 1];
+        const auto nextLayerBegin = weights.begin() + weightBeginIndex + layerSizes[layerIndex] * nextLayerNeurons;
+        const auto nextLayerLast = nextLayerBegin + nextLayerNeurons;
+        weights.erase(nextLayerBegin, nextLayerLast);
+
+        weightBeginIndex -= oldLayerSize * previousLayerNeurons;
+
+        // Remove links from previous layer
+        // TODO : Reverse order to optimize remove operations a bit
+        for (int i = 0; i < previousLayerNeurons; ++i)
+        {
+            const int index = weightBeginIndex + oldLayerSize * (i + 1) - 1 - i;
+            weights.erase(weights.begin() + index);
+        }
+
+        return true;
+    }
+
+    static bool AddLayer(std::vector<int>& layerSizes, std::vector<float>& weights, int newLayerIndex)
+    {
+        if (layerSizes.size() < 2 || weights.empty() || newLayerIndex <= 0 || newLayerIndex >= static_cast<int>(layerSizes.size()))
+            return false;
+
+        const int previousLayerSize = layerSizes[newLayerIndex - 1];
+        const int nextLayerSize = layerSizes[newLayerIndex];
+        const int min = previousLayerSize < nextLayerSize ? previousLayerSize : nextLayerSize;
+        const int max = previousLayerSize > nextLayerSize ? previousLayerSize : nextLayerSize;
+        const int newLayerSize = BrainFramework::RandomInt(min, max);
+        layerSizes.insert(layerSizes.begin() + newLayerIndex, newLayerSize);
+
+        int weightBeginIndex = 0;
+        for (int i = 1; i < newLayerIndex; ++i)
+            weightBeginIndex += (layerSizes[i] * layerSizes[i - 1]);
+
+        const int previousLayerConnections = previousLayerSize * nextLayerSize;
+        const int newLayerConnectionsBothSides = previousLayerSize * newLayerSize + newLayerSize * nextLayerSize;
+
+        const auto begin = weights.begin() + weightBeginIndex;
+        if (newLayerConnectionsBothSides > previousLayerConnections)
+        {
+            const int delta = newLayerConnectionsBothSides - previousLayerConnections;
+            weights.insert(begin + previousLayerConnections, delta, 1.0f);
+        }
+        else
+        {
+            // TODO: Only erase ?
+            weights.erase(begin, begin + previousLayerConnections);
+            weights.insert(begin, newLayerConnectionsBothSides, 1.0f);
+        }
+
+        for (int i = 0; i < newLayerConnectionsBothSides; ++i)
+            weights[weightBeginIndex + i] = BrainFramework::RandomFloat() * 4.0f - 2.0f;
+
+        return true;
+    }
+
 private:
     std::vector<float> m_Values;
     std::vector<int> m_LayerSizes;

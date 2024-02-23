@@ -145,32 +145,8 @@ namespace NEETL
                 if (BrainFramework::RandomFloat() < p)
                 {
                     // Add Neuron
-                    int layerIndex = BrainFramework::RandomInt(1, intermediateLayerCount);
-                    const int oldLayerSize = m_LayerSizes[layerIndex];
-                    m_LayerSizes[layerIndex]++;
-
-                    int weightBeginIndex = 0;
-                    for (int i = 1; i < layerIndex; ++i)
-                        weightBeginIndex += (m_LayerSizes[i] * m_LayerSizes[i - 1]);
-
-                    // Add links from previous layer
-                    const int previousLayerNeurons = m_LayerSizes[layerIndex - 1];
-                    for (int i = 0; i < previousLayerNeurons; ++i)
-                    {
-                        const int index = weightBeginIndex + oldLayerSize * (i + 1) - 1;
-                        m_Weights.insert(m_Weights.begin() + index, BrainFramework::RandomFloat() * 4.0f - 2.0f);
-                    }
-
-                    weightBeginIndex += previousLayerNeurons * m_LayerSizes[layerIndex];
-
-                    // Add links for next layer
-                    const int nextLayerNeurons = m_LayerSizes[layerIndex + 1];
-                    const int nextWeightsIndex = weightBeginIndex + oldLayerSize * nextLayerNeurons;
-                    m_Weights.insert(m_Weights.begin() + nextWeightsIndex, nextLayerNeurons, 0.0f);
-                    for (int i = 0; i < nextLayerNeurons; ++i)
-                    {
-                        m_Weights[nextWeightsIndex + i] = BrainFramework::RandomFloat() * 4.0f - 2.0f;
-                    }
+                    int layerIndex = 1 + BrainFramework::RandomInt(0, intermediateLayerCount);
+                    BrainFramework::LayeredNeuralNetwork::AddNeuronOnLayer(m_LayerSizes, m_Weights, layerIndex);
                 }
                 p -= 1.0f;
             }
@@ -181,34 +157,8 @@ namespace NEETL
                 if (BrainFramework::RandomFloat() < p)
                 {
                     // Remove Neuron
-                    int layerIndex = BrainFramework::RandomInt(0, intermediateLayerCount) + 1;
-                    const int oldLayerSize = m_LayerSizes[layerIndex];
-                    if (oldLayerSize <= 1)
-                        continue;
-                    m_LayerSizes[layerIndex]--;
-
-                    int weightBeginIndex = 0;
-                    for (int i = 1; i < layerIndex; ++i)
-                        weightBeginIndex += (m_LayerSizes[i] * m_LayerSizes[i - 1]);
-                    const int previousLayerNeurons = m_LayerSizes[layerIndex - 1];
-
-                    weightBeginIndex += oldLayerSize * previousLayerNeurons;
-
-                    // Remove links from next layer (do this one first to optimize remove operations on std::vector)
-                    const int nextLayerNeurons = m_LayerSizes[layerIndex + 1];
-                    const auto nextLayerBegin = m_Weights.begin() + weightBeginIndex + m_LayerSizes[layerIndex] * nextLayerNeurons;
-                    const auto nextLayerLast = nextLayerBegin + nextLayerNeurons;
-                    m_Weights.erase(nextLayerBegin, nextLayerLast);
-
-                    weightBeginIndex -= oldLayerSize * previousLayerNeurons;
-
-                    // Remove links from previous layer
-                    // TODO : Reverse order to optimize remove operations a bit
-                    for (int i = 0; i < previousLayerNeurons; ++i)
-                    {
-                        const int index = weightBeginIndex + oldLayerSize * (i + 1) - 1 - i;
-                        m_Weights.erase(m_Weights.begin() + index);
-                    }
+                    int layerIndex = 1 + BrainFramework::RandomInt(0, intermediateLayerCount);
+                    BrainFramework::LayeredNeuralNetwork::RemoveNeuronOnLayer(m_LayerSizes, m_Weights, layerIndex);
                 }
                 p -= 1.0f;
             }
@@ -220,35 +170,7 @@ namespace NEETL
                 {
                     // Add Layer
                     const int newLayerIndex = BrainFramework::RandomInt(1, static_cast<int>(m_LayerSizes.size() - 1));
-                    const int previousLayerSize = m_LayerSizes[newLayerIndex - 1];
-                    const int nextLayerSize = m_LayerSizes[newLayerIndex];
-                    const int min = previousLayerSize < nextLayerSize ? previousLayerSize : nextLayerSize;
-                    const int max = previousLayerSize > nextLayerSize ? previousLayerSize : nextLayerSize;
-                    const int newLayerSize = BrainFramework::RandomInt(min, max);
-                    m_LayerSizes.insert(m_LayerSizes.begin() + newLayerIndex, newLayerSize);
-
-                    int weightBeginIndex = 0;
-                    for (int i = 1; i < newLayerIndex; ++i)
-                        weightBeginIndex += (m_LayerSizes[i] * m_LayerSizes[i - 1]);
-
-                    const int previousLayerConnections = previousLayerSize * nextLayerSize;
-                    const int newLayerConnectionsBothSides = previousLayerSize * newLayerSize + newLayerSize * nextLayerSize;
-                    
-                    const auto begin = m_Weights.begin() + weightBeginIndex;
-                    if (newLayerConnectionsBothSides > previousLayerConnections)
-                    {
-                        const int delta = newLayerConnectionsBothSides - previousLayerConnections;
-                        m_Weights.insert(begin + previousLayerConnections, delta, 1.0f);
-                    }
-                    else
-                    {
-                        // TODO: Only erase ?
-                        m_Weights.erase(begin, begin + previousLayerConnections);
-                        m_Weights.insert(begin, newLayerConnectionsBothSides, 1.0f);
-                    }
-
-                    for (int i = 0; i < newLayerConnectionsBothSides; ++i)
-                        m_Weights[weightBeginIndex + i] = BrainFramework::RandomFloat() * 4.0f - 2.0f;
+                    BrainFramework::LayeredNeuralNetwork::AddLayer(m_LayerSizes, m_Weights, newLayerIndex);
                 }
                 p -= 1.0f;
             }
