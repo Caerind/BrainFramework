@@ -13,6 +13,30 @@
 #include "MoreOrLess.hpp"
 #include "Blackjack.hpp"
 
+class VectorLogger : public BrainFramework::Logger
+{
+public:
+    VectorLogger() = default;
+
+    void Log(const std::string& line) override
+    {
+        m_Logs.push_back(line);
+    }
+
+    void Clear()
+    {
+        m_Logs.clear();
+    }
+
+    const std::vector<std::string>& GetLogs() const
+    {
+        return m_Logs;
+    }
+
+private:
+    std::vector<std::string> m_Logs;
+};
+
 struct Player
 {
     Player() = default;
@@ -20,6 +44,7 @@ struct Player
     std::unique_ptr<BrainFramework::Model> model;
     std::unique_ptr<BrainFramework::NeuralNetwork> neuralNetwork;
     BrainFramework::AgentInterface* agent;
+    VectorLogger logger;
 };
 
 enum class State
@@ -147,7 +172,9 @@ int main()
                     {
                         state = State::Train;
                         for (Player& player : players)
+                        {
                             player.model->PrepareTraining(*simulationPtr);
+                        }
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Play"))
@@ -158,8 +185,10 @@ int main()
 
                         for (Player& player : players)
                         {
+                            player.logger.Clear();
                             player.model->MakeBestNeuralNetwork(player.neuralNetwork);
                             player.agent = simulationPtr->CreateRLAgent(*player.neuralNetwork);
+                            player.agent->SetLogger(&player.logger);
                             player.agent->Initialize();
                         }
                     }
@@ -208,7 +237,7 @@ int main()
 
                         for (Player& player : players)
                         {
-                            player.model->EndEvalutation(player.agent->GetScore());
+                            player.model->EndEvalutation(player.agent->GetReward());
                             simulationPtr->RemoveAgent(player.agent); // TODO : Reset agent on Initialize ?
                             player.agent = nullptr;
                         }
@@ -232,7 +261,7 @@ int main()
                         {
                             if (player.agent != nullptr)
                             {
-                                auto result = player.agent->Step(true);
+                                auto result = player.agent->Step();
                                 if (result == BrainFramework::AgentInterface::Result::Ongoing)
                                 {
                                     someAgentIsStillPlaying = true;
@@ -244,7 +273,7 @@ int main()
                         {
                             for (Player& player : players)
                             {
-                                player.model->EndEvalutation(player.agent->GetScore());
+                                player.model->EndEvalutation(player.agent->GetReward());
                                 simulationPtr->RemoveAgent(player.agent); // TODO : Reset agent on Initialize ?
                                 player.agent = nullptr;
                             }
@@ -257,7 +286,7 @@ int main()
                     {
                         if (player.agent != nullptr)
                         {
-                            for (const std::string& log : player.agent->GetLogs())
+                            for (const std::string& log : player.logger.GetLogs())
                             {
                                 ImGui::Text("%s", log.c_str());
                             }

@@ -13,7 +13,7 @@ public:
     }
 
     void Initialize() override;
-    Result Step(bool allowLog = false) override;
+    Result Step() override;
 
     virtual bool Evaluate() = 0;
     virtual void AddCard(int card) { m_Hand += card; m_Cards++; }
@@ -131,7 +131,7 @@ void BlackjackBaseAgent::Initialize()
     m_Result = BrainFramework::AgentInterface::Result::Initialized;
 }
 
-BlackjackBaseAgent::Result BlackjackBaseAgent::Step(bool allowLog)
+BlackjackBaseAgent::Result BlackjackBaseAgent::Step()
 {
     if (m_Hand > 21)
     {

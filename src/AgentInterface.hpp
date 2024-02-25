@@ -19,21 +19,31 @@ public:
     };
 
     virtual void Initialize() = 0;
-    virtual Result Step(bool allowLog = false) = 0;
+    virtual Result Step() = 0;
 
-    void AddLog(const std::string& log) { m_Logs.push_back(log); }
+    void SetLogger(Logger* logger) { m_Logger = logger; }
+    bool HasLogger() const { return m_Logger != nullptr; }
+    void AddLog(const std::string& line) 
+    { 
+        if (m_Logger != nullptr)
+        {
+            m_Logger->Log(line);
+        }
+    }
 
-    float GetScore() const { return m_Score; }
+    float GetGameScore() const { return m_GameScore; }
+    float GetReward() const { return m_Reward; }
     Result GetResult() const { return m_Result; }
-    const std::vector<std::string>& GetLogs() const { return m_Logs; }
 
 protected:
-    void AddReward(float reward) { m_Score += reward; }
+    void AddReward(float reward) { m_Reward += reward; }
+    void SetGameScore(float gameScore) { m_GameScore = gameScore; }
     Result MarkResult(Result result) { m_Result = result; return result; }
 
-    std::vector<std::string> m_Logs;
+    Logger* m_Logger{ nullptr };
     Result m_Result{ Result::None };
-    float m_Score{ 0.0f };
+    float m_GameScore{ 0.0f };
+    float m_Reward{ 0.0f };
 };
 
 } // namespace BrainFramework

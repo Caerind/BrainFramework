@@ -60,4 +60,12 @@ inline int RandomIndex(const T& container)
     }
 }
 
+class Logger
+{
+public:
+    Logger() = default;
+
+    virtual void Log(const std::string& line) = 0;
+};
+
 } // namespace BrainFramework

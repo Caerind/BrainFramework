@@ -311,7 +311,7 @@ namespace NEETL
             m_CurrentGenomeEvaluation++;
             m_CurrentGenomeScoreSum += result;
 
-            constexpr int batchSize = 10;
+            constexpr int batchSize = 5;
             if (m_CurrentGenomeEvaluation >= batchSize)
             {
                 genome.EndBatch(m_CurrentGenomeScoreSum / batchSize);

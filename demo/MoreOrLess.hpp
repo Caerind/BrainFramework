@@ -13,7 +13,7 @@ public:
     }
 
     void Initialize() override;
-    Result Step(bool allowLog = false) override;
+    Result Step() override;
 
     virtual bool Evaluate() = 0;
     virtual int GetGuessedNumber() const = 0;
@@ -120,22 +120,25 @@ void MoreOrLessBaseAgent::Initialize()
     m_Result = BrainFramework::AgentInterface::Result::Initialized;
 }
 
-MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step(bool allowLog)
+MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step()
 {
-    if (m_Guess == 0 && allowLog)
-        m_Logs.push_back("NumberToGuess: " + std::to_string(m_MoreOrLess.GetNumberToGuess()));
+    if (m_Guess == 0 && HasLogger())
+        AddLog("NumberToGuess: " + std::to_string(m_MoreOrLess.GetNumberToGuess()));
 
     if (m_Guess < 10)
     {
-        std::string log;
-
         if (!Evaluate())
             return MarkResult(Result::Failed);
 
         int numberGuessed = GetGuessedNumber();
 
-        if (allowLog)
+        static std::string log;
+        if (HasLogger())
+        {
+            log.clear();
+            log.reserve(16);
             log += std::to_string(numberGuessed);
+        }
 
         if (numberGuessed < 0 || numberGuessed > 100)
         {
@@ -149,8 +152,7 @@ MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step(bool allowLog)
         if (numberGuessed == m_MoreOrLess.GetNumberToGuess())
         {
             AddReward(100.0f / (m_Guess + 1));
-            if (allowLog)
-                m_Logs.push_back(log);
+            AddLog(log);
             return MarkResult(Result::Finished);
         }
         else
@@ -159,9 +161,9 @@ MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step(bool allowLog)
 
             AddFeedback(m_Guess, numberGuessed, hint);
 
-            if (allowLog && hint > 0.0f)
+            if (HasLogger() && hint > 0.0f)
                 log += " +";
-            if (allowLog && hint < 0.0f)
+            if (HasLogger() && hint < 0.0f)
                 log += " -";
 
             if (m_Guess > 0)
@@ -177,8 +179,7 @@ MoreOrLessBaseAgent::Result MoreOrLessBaseAgent::Step(bool allowLog)
             m_PreviousHint = hint;
         }
 
-        if (allowLog)
-            m_Logs.push_back(log);
+        AddLog(log);
     }
 
     if (m_Guess >= 10)
